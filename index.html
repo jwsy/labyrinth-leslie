@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Labyrinth">
+  <link rel="manifest" href="manifest.json">
+  <title>Labyrinth by Leslie</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d1a;
+      overflow: hidden;
+      font-family: monospace;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── UI BAR ── */
+    #ui-bar {
+      position: relative;
+      z-index: 10;
+      height: 50px;
+      width: 100%;
+      background: #0d0d1a;
+      border-bottom: 2px solid #f0c040;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      flex-shrink: 0;
+    }
+
+    #ui-left { display: flex; align-items: center; gap: 8px; }
+    #ui-center { display: flex; align-items: center; gap: 6px; }
+    #ui-right { display: flex; align-items: center; gap: 6px; }
+
+    .ui-btn {
+      background: #1a1a2e;
+      border: 1px solid #f0c040;
+      border-radius: 6px;
+      color: #f0c040;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 4px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .ui-btn:active { background: #f0c040; color: #0d0d1a; }
+
+    #timer-display {
+      font-size: 18px;
+      font-weight: bold;
+      color: #f0c040;
+      font-family: monospace;
+      min-width: 48px;
+      text-align: center;
+    }
+    #timer-display.urgent { color: #ff4444; }
+
+    #hearts-display { display: flex; gap: 3px; }
+    #powerup-display { display: flex; gap: 3px; }
+
+    #hearts-canvas { image-rendering: pixelated; }
+    #powerup-canvas { image-rendering: pixelated; }
+
+    /* ── GAME CANVAS ── */
+    #game-canvas {
+      display: block;
+      flex: 1;
+      image-rendering: pixelated;
+    }
+
+    /* ── OVERLAYS ── */
+    .overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+    }
+    .overlay.visible { display: flex; }
+
+    .panel {
+      background: #1a1a2e;
+      border: 2px solid #f0c040;
+      border-radius: 15px;
+      padding: 24px;
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+      color: #f0c040;
+      font-family: monospace;
+    }
+
+    .panel h2 { font-size: 22px; margin-bottom: 16px; }
+    .panel p { font-size: 14px; color: #aaaacc; margin-bottom: 12px; }
+
+    .panel-btn {
+      display: block;
+      width: 100%;
+      background: #2a2a4e;
+      border: 2px solid #f0c040;
+      border-radius: 10px;
+      color: #f0f0f0;
+      font-family: monospace;
+      font-size: 16px;
+      padding: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .panel-btn:active, .panel-btn:hover { background: #f0c040; color: #0d0d1a; }
+
+    .pref-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 8px 0;
+      font-size: 13px;
+      color: #aaaacc;
+    }
+    .pref-row select {
+      background: #2a2a4e;
+      border: 1px solid #f0c040;
+      border-radius: 5px;
+      color: #f0c040;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 2px 4px;
+    }
+
+    /* ── MATH QUIZ ── */
+    #quiz-overlay { background: rgba(0,0,0,0.75); }
+
+    #quiz-question {
+      font-size: 32px;
+      color: #f0c040;
+      margin-bottom: 20px;
+    }
+
+    #quiz-choices {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .quiz-btn {
+      background: #2a2a4e;
+      border: 2px solid #f0c040;
+      border-radius: 10px;
+      color: #f0f0f0;
+      font-family: monospace;
+      font-size: 22px;
+      padding: 12px 20px;
+      cursor: pointer;
+      min-width: 70px;
+    }
+    .quiz-btn:active, .quiz-btn:hover { background: #f0c040; color: #0d0d1a; }
+
+    /* ── START SCREEN ── */
+    #start-overlay {
+      background: #0d0d1a;
+      z-index: 40;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #start-overlay.visible { display: flex; }
+
+    #start-title {
+      font-size: 28px;
+      color: #f0c040;
+      font-family: monospace;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    #start-subtitle {
+      font-size: 13px;
+      color: #8888aa;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    #start-bunny-canvas {
+      image-rendering: pixelated;
+      width: 80px;
+      height: 80px;
+    }
+
+    #start-panel {
+      background: #1a1a2e;
+      border: 2px solid #f0c040;
+      border-radius: 15px;
+      padding: 20px;
+      width: 90%;
+      max-width: 300px;
+    }
+
+    /* ── DAMAGE FLASH ── */
+    #damage-flash {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(200,0,0,0.4);
+      pointer-events: none;
+      z-index: 50;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div id="game-container">
+
+  <!-- UI Bar -->
+  <div id="ui-bar">
+    <div id="ui-left">
+      <button class="ui-btn" id="pause-btn">⏸ Menu</button>
+      <canvas id="hearts-canvas" width="66" height="20"></canvas>
+    </div>
+    <div id="ui-center">
+      <span id="timer-display">0:55</span>
+    </div>
+    <div id="ui-right">
+      <canvas id="powerup-canvas" width="66" height="20"></canvas>
+      <button class="ui-btn" id="mute-btn">🔊</button>
+    </div>
+  </div>
+
+  <!-- Game Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Damage Flash -->
+  <div id="damage-flash"></div>
+
+  <!-- Math Quiz Overlay -->
+  <div class="overlay" id="quiz-overlay">
+    <div class="panel">
+      <div id="quiz-question"></div>
+      <div id="quiz-choices"></div>
+    </div>
+  </div>
+
+  <!-- Pause Menu Overlay -->
+  <div class="overlay" id="pause-overlay" style="background:rgba(0,0,0,0.85);">
+    <div class="panel">
+      <h2>⏸ Paused</h2>
+      <div class="pref-row">
+        <span>Math min factor</span>
+        <select id="pref-math-min">
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5" selected>5</option><option value="6">6</option><option value="7">7</option>
+          <option value="8">8</option><option value="9">9</option><option value="10">10</option>
+          <option value="11">11</option><option value="12">12</option>
+        </select>
+      </div>
+      <div class="pref-row">
+        <span>Math max factor</span>
+        <select id="pref-math-max">
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option><option value="7">7</option>
+          <option value="8">8</option><option value="9" selected>9</option><option value="10">10</option>
+          <option value="11">11</option><option value="12">12</option>
+        </select>
+      </div>
+      <div class="pref-row">
+        <span>Pineapples</span>
+        <select id="pref-pine-count">
+          <option value="1">1</option><option value="2">2</option>
+          <option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
+        </select>
+      </div>
+      <div class="pref-row">
+        <span>Pineapple speed</span>
+        <select id="pref-pine-speed">
+          <option value="0.5">Slow</option>
+          <option value="1" selected>Medium</option>
+          <option value="2">Fast</option>
+        </select>
+      </div>
+      <div class="pref-row">
+        <span>Timer (next game)</span>
+        <select id="pref-timer">
+          <option value="30">30s</option><option value="45">45s</option>
+          <option value="55" selected>55s</option><option value="90">90s</option>
+          <option value="120">120s</option>
+        </select>
+      </div>
+      <button class="panel-btn" id="export-btn">Export Maze JSON</button>
+      <button class="panel-btn" id="new-maze-btn">New Maze</button>
+      <button class="panel-btn" id="resume-btn">Resume</button>
+    </div>
+  </div>
+
+  <!-- Win Screen -->
+  <div class="overlay" id="win-overlay" style="background:rgba(0,0,0,0.85);">
+    <div class="panel">
+      <h2>🏆 You Escaped!</h2>
+      <p>The Minotaur is slain.<br>Theseus would be proud.</p>
+      <button class="panel-btn" id="win-again-btn">Play Again</button>
+      <button class="panel-btn" id="win-start-btn">Return to Start</button>
+    </div>
+  </div>
+
+  <!-- Lose Screen -->
+  <div class="overlay" id="lose-overlay" style="background:rgba(0,0,0,0.85);">
+    <div class="panel">
+      <h2>💀 Time's Up!</h2>
+      <p>The labyrinth claims another hero.</p>
+      <button class="panel-btn" id="lose-again-btn">Play Again</button>
+      <button class="panel-btn" id="lose-start-btn">Return to Start</button>
+    </div>
+  </div>
+
+  <!-- Start Screen -->
+  <div class="overlay visible" id="start-overlay">
+    <div id="start-title">Labyrinth<br>by Leslie</div>
+    <canvas id="start-bunny-canvas" width="80" height="80"></canvas>
+    <div id="start-panel">
+      <div class="pref-row">
+        <span style="color:#f0c040">Timer</span>
+        <select id="start-timer" style="background:#2a2a4e;border:1px solid #f0c040;border-radius:5px;color:#f0c040;font-family:monospace;font-size:13px;padding:2px 4px;">
+          <option value="30">30s</option><option value="45">45s</option>
+          <option value="55" selected>55s</option><option value="90">90s</option>
+          <option value="120">120s</option>
+        </select>
+      </div>
+      <div class="pref-row" style="margin-top:10px;">
+        <span style="color:#f0c040">Upload Maze</span>
+        <input type="file" id="upload-maze" accept=".json" style="color:#aaaacc;font-family:monospace;font-size:11px;max-width:140px;">
+      </div>
+      <button class="panel-btn" id="start-btn" style="margin-top:14px;font-size:18px;">Start Game</button>
+    </div>
+    <div id="start-subtitle">Swipe or use arrow keys to move</div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// 1. CONSTANTS & CONFIG
+// ═══════════════════════════════════════════════
+
+const COLS = 15;
+const ROWS = 21;
+const UI_H = 50;
+
+let cfg = {
+  mathMin: 5,
+  mathMax: 9,
+  pineCount: 3,
+  pineSpeed: 1,    // moves per second
+  timerDuration: 55,
+  muted: false
+};
+
+// ═══════════════════════════════════════════════
+// 2. CANVAS SETUP
+// ═══════════════════════════════════════════════
+
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+
+let CW, CH; // cell width/height in CSS pixels
+
+function resizeCanvas() {
+  const W = window.innerWidth;
+  const H = window.innerHeight - UI_H;
+  CW = Math.floor(W / COLS);
+  CH = Math.floor(H / ROWS);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resizeCanvas();
+window.addEventListener('resize', () => { resizeCanvas(); if (state.phase === 'playing' || state.phase === 'paused') drawFrame(); });
+
+// ═══════════════════════════════════════════════
+// 3. MAZE GENERATION
+// ═══════════════════════════════════════════════
+
+function generateMaze(seed) {
+  // Seeded PRNG (mulberry32)
+  let s = seed >>> 0;
+  function rand() {
+    s += 0x6D2B79F5;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+
+  const grid = Array.from({length: ROWS}, () => new Array(COLS).fill(1));
+
+  function carve(r, c) {
+    grid[r][c] = 0;
+    const dirs = [[0,2],[0,-2],[2,0],[-2,0]].sort(() => rand() - 0.5);
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc;
+      if (nr > 0 && nr < ROWS-1 && nc > 0 && nc < COLS-1 && grid[nr][nc] === 1) {
+        grid[r + dr/2][c + dc/2] = 0;
+        carve(nr, nc);
+      }
+    }
+  }
+  carve(1, 1);
+
+  // Ensure exit cell is open
+  grid[ROWS-2][COLS-2] = 0;
+  grid[ROWS-2][COLS-3] = 0;
+  grid[ROWS-3][COLS-2] = 0;
+
+  return grid;
+}
+
+function placeRandom(maze, occupied, rng) {
+  let r, c, tries = 0;
+  do {
+    r = 1 + Math.floor(rng() * (ROWS - 2));
+    c = 1 + Math.floor(rng() * (COLS - 2));
+    tries++;
+    if (tries > 2000) break;
+  } while (maze[r][c] !== 0 || occupied.some(([or,oc]) => or === r && oc === c));
+  occupied.push([r, c]);
+  return [r, c];
+}
+
+function buildLevel(mazeData) {
+  const seed = mazeData ? (mazeData.seed || 1) : (Math.random() * 0xFFFFFFFF | 0);
+  let s = seed >>> 0;
+  function rng() {
+    s += 0x6D2B79F5;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+
+  const maze = mazeData ? mazeData.maze : generateMaze(seed);
+  const occupied = [[1,1], [ROWS-2, COLS-2]];
+
+  const swordPos   = mazeData ? mazeData.items.sword   : placeRandom(maze, occupied, rng);
+  const shoesPos   = mazeData ? mazeData.items.shoes   : placeRandom(maze, occupied, rng);
+  const lanternPos = mazeData ? mazeData.items.lantern : placeRandom(maze, occupied, rng);
+  const minoPos    = mazeData ? mazeData.minotaurStart : placeRandom(maze, occupied, rng);
+
+  const pinePositions = [];
+  if (mazeData && mazeData.pineappleStarts) {
+    pinePositions.push(...mazeData.pineappleStarts);
+  } else {
+    for (let i = 0; i < cfg.pineCount; i++) {
+      pinePositions.push(placeRandom(maze, occupied, rng));
+    }
+  }
+
+  return { maze, seed, swordPos, shoesPos, lanternPos, minoPos, pinePositions };
+}
+
+function exportMaze() {
+  const data = {
+    seed: state.level.seed,
+    maze: state.level.maze,
+    playerStart: [1, 1],
+    exit: [ROWS-2, COLS-2],
+    items: {
+      sword: state.level.swordPos,
+      shoes: state.level.shoesPos,
+      lantern: state.level.lanternPos
+    },
+    minotaurStart: state.level.minoPos,
+    pineappleStarts: state.pineapples.map(p => [p.r, p.c])
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `labyrinth-${state.level.seed}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════
+// 4. GAME STATE
+// ═══════════════════════════════════════════════
+
+let importedMaze = null;
+
+let state = {};
+
+function initState() {
+  const lvl = buildLevel(importedMaze);
+  state = {
+    phase: 'playing',   // 'playing' | 'paused' | 'quiz' | 'win' | 'lose'
+    level: lvl,
+    player: { r: 1, c: 1, prevR: 1, prevC: 1, frame: 0, frameTimer: 0, stunTimer: 0 },
+    minotaur: lvl.minoPos ? { r: lvl.minoPos[0], c: lvl.minoPos[1], frame: 0, frameTimer: 0, defeated: false } : null,
+    pineapples: lvl.pinePositions.map(([r,c]) => ({ r, c, frame: 0, frameTimer: 0 })),
+    items: {
+      sword:   { r: lvl.swordPos[0],   c: lvl.swordPos[1],   collected: false },
+      shoes:   { r: lvl.shoesPos[0],   c: lvl.shoesPos[1],   collected: false },
+      lantern: { r: lvl.lanternPos[0], c: lvl.lanternPos[1], collected: false },
+    },
+    powerups: { sword: false, shoes: false, lantern: false },
+    hearts: 3,
+    thread: [[1, 1]],
+    visited: Array.from({length: ROWS}, () => new Uint8Array(COLS)),
+    timerMs: cfg.timerDuration * 1000,
+    pineTimer: 0,
+    minoTimer: 0,
+    moveCooldown: 0,
+    quizCallback: null,
+  };
+  state.visited[1][1] = 1;
+}
+
+// ═══════════════════════════════════════════════
+// 5. FOG OF WAR
+// ═══════════════════════════════════════════════
+
+function isVisible(r, c) {
+  if (state.powerups.lantern) return true;
+  const pr = state.player.r, pc = state.player.c;
+  return Math.abs(r - pr) <= 3 && Math.abs(c - pc) <= 3;
+}
+
+function isExitCell(r, c) {
+  return r === ROWS-2 && c === COLS-2;
+}
+
+// ═══════════════════════════════════════════════
+// 6. SPRITE DRAWING
+// ═══════════════════════════════════════════════
+
+// Draw a pixel-art bunny at canvas position (px, py) in cell-sized box (cw x ch)
+function drawBunny(x, y, cw, ch, frame, hasSword, hasShoes, stunned) {
+  const s = Math.min(cw, ch);
+  const px = x + (cw - s) / 2;
+  const py = y + (ch - s) / 2;
+
+  // Scale factor: design in 16x16 logical units
+  const u = s / 16;
+
+  ctx.save();
+  ctx.translate(px, py);
+
+  // Stun flash
+  if (stunned) {
+    ctx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 60);
+  }
+
+  // Ears (behind body)
+  // Left ear
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(4*u, 0, 2*u, 5*u);
+  ctx.fillStyle = '#ffaacc';
+  ctx.fillRect(4.5*u, 0.5*u, 1*u, 3.5*u);
+
+  // Right ear
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(10*u, 0, 2*u, 5*u);
+  ctx.fillStyle = '#ffaacc';
+  ctx.fillRect(10.5*u, 0.5*u, 1*u, 3.5*u);
+
+  // Ear droop animation (frame 1,3)
+  if (frame % 2 === 1) {
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(4*u, 4*u, 2*u, 1*u); // slight droop left
+    ctx.fillRect(10*u, 4*u, 2*u, 1*u); // slight droop right
+  }
+
+  // Body
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(3*u, 4*u, 10*u, 9*u);
+
+  // Face
+  // Eyes
+  ctx.fillStyle = '#222222';
+  ctx.fillRect(5*u, 6*u, 1.5*u, 1.5*u);
+  ctx.fillRect(9.5*u, 6*u, 1.5*u, 1.5*u);
+  // Nose
+  ctx.fillStyle = '#ffaacc';
+  ctx.fillRect(7.5*u, 8*u, 1*u, 1*u);
+
+  // Feet animation
+  ctx.fillStyle = '#dddddd';
+  if (frame % 2 === 0) {
+    ctx.fillRect(4*u, 13*u, 3*u, 2*u);
+    ctx.fillRect(9*u, 12*u, 3*u, 2*u);
+  } else {
+    ctx.fillRect(4*u, 12*u, 3*u, 2*u);
+    ctx.fillRect(9*u, 13*u, 3*u, 2*u);
+  }
+
+  // Shoes overlay
+  if (hasShoes) {
+    ctx.fillStyle = '#8B4513';
+    if (frame % 2 === 0) {
+      ctx.fillRect(4*u, 14*u, 3*u, 1.5*u);
+      ctx.fillRect(9*u, 13*u, 3*u, 1.5*u);
+    } else {
+      ctx.fillRect(4*u, 13*u, 3*u, 1.5*u);
+      ctx.fillRect(9*u, 14*u, 3*u, 1.5*u);
+    }
+  }
+
+  // Sword
+  if (hasSword) {
+    ctx.fillStyle = '#f0c040';
+    ctx.fillRect(13*u, 6*u, 3*u, 1*u);  // blade horizontal
+    ctx.fillRect(12.5*u, 5.5*u, 1*u, 2*u); // crossguard vertical
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(11.5*u, 6*u, 1.5*u, 1*u); // handle
+  }
+
+  ctx.restore();
+}
+
+function drawMinotaur(x, y, cw, ch, frame, defeated) {
+  const s = Math.min(cw, ch);
+  const px = x + (cw - s) / 2;
+  const py = y + (ch - s) / 2;
+  const u = s / 16;
+
+  ctx.save();
+  ctx.translate(px, py);
+
+  if (defeated) {
+    // Skull
+    ctx.fillStyle = '#888888';
+    ctx.fillRect(4*u, 3*u, 8*u, 7*u);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(5*u, 5*u, 2*u, 2*u); // left eye X
+    ctx.fillRect(9*u, 5*u, 2*u, 2*u); // right eye X
+    ctx.fillStyle = '#888888';
+    ctx.fillRect(5.5*u, 5.5*u, 1*u, 1*u);
+    ctx.fillRect(9.5*u, 5.5*u, 1*u, 1*u);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(5.5*u, 5.5*u, 0.5*u, 0.5*u);
+    ctx.fillRect(9.5*u, 5.5*u, 0.5*u, 0.5*u);
+    // Teeth zigzag
+    ctx.fillStyle = '#cccccc';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect((4 + i*2)*u, 9*u, u, 2*u);
+    }
+    ctx.restore();
+    return;
+  }
+
+  const bob = frame === 0 ? 0 : 1;
+
+  // Body
+  ctx.fillStyle = '#4a2800';
+  ctx.fillRect(3*u, (6+bob)*u, 10*u, 8*u);
+
+  // Head
+  ctx.fillStyle = '#6b3a00';
+  ctx.fillRect(4*u, (2+bob)*u, 8*u, 6*u);
+
+  // Horns
+  ctx.fillStyle = '#eeeeee';
+  // Left horn
+  ctx.fillRect(3*u, (bob)*u, u, 3*u);
+  ctx.fillRect(2*u, (bob)*u, u, u);
+  // Right horn
+  ctx.fillRect(12*u, (bob)*u, u, 3*u);
+  ctx.fillRect(13*u, (bob)*u, u, u);
+
+  // Eyes
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(6*u, (4+bob)*u, 1.5*u, 1.5*u);
+  ctx.fillRect(8.5*u, (4+bob)*u, 1.5*u, 1.5*u);
+
+  // Nostrils
+  ctx.fillStyle = '#330000';
+  ctx.fillRect(6.5*u, (6+bob)*u, u, u);
+  ctx.fillRect(8.5*u, (6+bob)*u, u, u);
+
+  ctx.restore();
+}
+
+function drawPineapple(x, y, cw, ch, frame) {
+  const s = Math.min(cw, ch);
+  const px = x + (cw - s) / 2;
+  const py = y + (ch - s) / 2;
+  const u = s / 16;
+  const bob = frame === 0 ? 0 : 1;
+
+  ctx.save();
+  ctx.translate(px, py);
+
+  // Leaves (crown)
+  ctx.fillStyle = '#228B22';
+  ctx.fillRect(6*u, (1+bob)*u, 1.5*u, 4*u);
+  ctx.fillRect(4*u, (2+bob)*u, 1.5*u, 3*u);
+  ctx.fillRect(10.5*u, (2+bob)*u, 1.5*u, 3*u);
+  ctx.fillRect(7.5*u, (0+bob)*u, 1.5*u, 4*u);
+
+  // Body oval (approximated with rects)
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(5*u, (5+bob)*u, 6*u, 8*u);
+  ctx.fillRect(4*u, (6+bob)*u, 8*u, 6*u);
+  ctx.fillRect(5*u, (12+bob)*u, 6*u, 1*u);
+
+  // Eyes
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(6*u, (7+bob)*u, 1.5*u, 1.5*u);
+  ctx.fillRect(8.5*u, (7+bob)*u, 1.5*u, 1.5*u);
+
+  ctx.restore();
+}
+
+function drawItem(x, y, cw, ch, type) {
+  const s = Math.min(cw, ch) * 0.7;
+  const px = x + (cw - s) / 2;
+  const py = y + (ch - s) / 2;
+  const u = s / 16;
+
+  // Glow
+  ctx.save();
+  ctx.shadowColor = '#f0c040';
+  ctx.shadowBlur = 6;
+
+  ctx.fillStyle = '#f0c040';
+
+  if (type === 'sword') {
+    ctx.translate(px, py);
+    // Blade
+    ctx.fillRect(2*u, 7*u, 12*u, 2*u);
+    // Crossguard
+    ctx.fillRect(7*u, 4*u, 2*u, 8*u);
+    // Handle
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(8.5*u, 6*u, 3*u, 4*u);
+  } else if (type === 'shoes') {
+    ctx.translate(px, py);
+    // Left boot
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(2*u, 8*u, 5*u, 5*u);
+    ctx.fillRect(2*u, 11*u, 7*u, 2*u);
+    // Right boot
+    ctx.fillRect(9*u, 8*u, 5*u, 5*u);
+    ctx.fillRect(7*u, 11*u, 7*u, 2*u);
+    // Gold highlight
+    ctx.fillStyle = '#f0c040';
+    ctx.fillRect(2*u, 8*u, 5*u, u);
+    ctx.fillRect(9*u, 8*u, 5*u, u);
+  } else if (type === 'lantern') {
+    ctx.translate(px, py);
+    // Handle
+    ctx.fillRect(7*u, 1*u, 2*u, 3*u);
+    // Hexagon body (approximated)
+    ctx.fillRect(5*u, 4*u, 6*u, 8*u);
+    ctx.fillRect(4*u, 5*u, 8*u, 6*u);
+    // Glow inner
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(6*u, 5*u, 4*u, 5*u);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+function drawExit(x, y, cw, ch) {
+  const u = Math.min(cw, ch) / 16;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Arch glow
+  ctx.shadowColor = '#f0c040';
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = '#f0c040';
+
+  // Left pillar
+  ctx.fillRect(2*u, 4*u, 3*u, 10*u);
+  // Right pillar
+  ctx.fillRect(11*u, 4*u, 3*u, 10*u);
+  // Top lintel
+  ctx.fillRect(2*u, 4*u, 12*u, 2*u);
+
+  // Inner passage (dark)
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(5*u, 6*u, 6*u, 8*u);
+
+  // Stars
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(7.5*u, 7.5*u, u, u);
+  ctx.fillRect(6*u, 9*u, u, u);
+  ctx.fillRect(9*u, 10*u, u, u);
+
+  ctx.restore();
+}
+
+function drawHeart(ctx2d, x, y, size, full) {
+  const u = size / 8;
+  ctx2d.fillStyle = full ? '#cc0000' : '#440000';
+  // Heart shape via rects
+  ctx2d.fillRect(x + u, y, 2*u, u);
+  ctx2d.fillRect(x + 5*u, y, 2*u, u);
+  ctx2d.fillRect(x, y + u, 4*u, 2*u);
+  ctx2d.fillRect(x + 4*u, y + u, 4*u, 2*u);
+  ctx2d.fillRect(x, y + 3*u, 8*u, 2*u);
+  ctx2d.fillRect(x + u, y + 5*u, 6*u, u);
+  ctx2d.fillRect(x + 2*u, y + 6*u, 4*u, u);
+  ctx2d.fillRect(x + 3*u, y + 7*u, 2*u, u);
+}
+
+function drawItemIcon(ctx2d, x, y, size, type) {
+  const u = size / 8;
+  ctx2d.fillStyle = '#f0c040';
+  if (type === 'sword') {
+    ctx2d.fillRect(x, y + 3*u, 7*u, u);
+    ctx2d.fillRect(x + 3*u, y + u, u, 6*u);
+  } else if (type === 'shoes') {
+    ctx2d.fillStyle = '#8B4513';
+    ctx2d.fillRect(x, y + 3*u, 3*u, 4*u);
+    ctx2d.fillRect(x + 4*u, y + 3*u, 3*u, 4*u);
+  } else if (type === 'lantern') {
+    ctx2d.fillRect(x + 2*u, y, 4*u, 6*u);
+    ctx2d.fillRect(x + u, y + u, 6*u, 4*u);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// 7. HUD CANVASES
+// ═══════════════════════════════════════════════
+
+const heartsCanvas = document.getElementById('hearts-canvas');
+const hctx = heartsCanvas.getContext('2d');
+const powerupCanvas = document.getElementById('powerup-canvas');
+const pctx = powerupCanvas.getContext('2d');
+
+function drawHUD() {
+  // Hearts
+  hctx.clearRect(0, 0, heartsCanvas.width, heartsCanvas.height);
+  for (let i = 0; i < 3; i++) {
+    drawHeart(hctx, 2 + i * 22, 2, 16, i < state.hearts);
+  }
+
+  // Powerups
+  pctx.clearRect(0, 0, powerupCanvas.width, powerupCanvas.height);
+  let slot = 0;
+  for (const type of ['sword', 'shoes', 'lantern']) {
+    if (state.powerups[type]) {
+      drawItemIcon(pctx, 2 + slot * 22, 2, 16, type);
+      slot++;
+    }
+  }
+
+  // Timer
+  const secs = Math.ceil(state.timerMs / 1000);
+  const m = Math.floor(secs / 60);
+  const s2 = secs % 60;
+  const timerEl = document.getElementById('timer-display');
+  timerEl.textContent = `${m}:${s2.toString().padStart(2,'0')}`;
+  timerEl.classList.toggle('urgent', secs <= 10);
+}
+
+// ═══════════════════════════════════════════════
+// 8. MATH QUIZ
+// ═══════════════════════════════════════════════
+
+function showQuiz(onCorrect, onWrong) {
+  state.phase = 'quiz';
+  state.quizCallback = { onCorrect, onWrong };
+
+  const min = cfg.mathMin, max = cfg.mathMax;
+  const a = min + Math.floor(Math.random() * (max - min + 1));
+  const b = min + Math.floor(Math.random() * (max - min + 1));
+  const correct = a * b;
+
+  document.getElementById('quiz-question').textContent = `${a} × ${b} = ?`;
+
+  const wrong = new Set([correct]);
+  while (wrong.size < 3) {
+    const w = Math.max(1, correct + (Math.floor(Math.random() * 21) - 10));
+    if (!wrong.has(w)) wrong.add(w);
+  }
+  const choices = [...wrong].sort(() => Math.random() - 0.5);
+
+  const choicesEl = document.getElementById('quiz-choices');
+  choicesEl.innerHTML = '';
+  for (const val of choices) {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-btn';
+    btn.textContent = val;
+    btn.addEventListener('click', () => {
+      hideQuiz();
+      if (val === correct) {
+        state.quizCallback.onCorrect();
+      } else {
+        state.quizCallback.onWrong();
+      }
+    });
+    choicesEl.appendChild(btn);
+  }
+
+  document.getElementById('quiz-overlay').classList.add('visible');
+}
+
+function hideQuiz() {
+  document.getElementById('quiz-overlay').classList.remove('visible');
+  state.phase = 'playing';
+}
+
+// ═══════════════════════════════════════════════
+// 9. ARIADNE'S THREAD
+// ═══════════════════════════════════════════════
+
+function drawThread() {
+  if (state.thread.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = '#cc2244';
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const [r0, c0] = state.thread[0];
+  ctx.moveTo(c0 * CW + CW/2, r0 * CH + CH/2);
+  for (let i = 1; i < state.thread.length; i++) {
+    const [r, c] = state.thread[i];
+    ctx.lineTo(c * CW + CW/2, r * CH + CH/2);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════
+// 10. MOVEMENT & COLLISIONS
+// ═══════════════════════════════════════════════
+
+function movePlayer(dir) {
+  if (state.phase !== 'playing') return;
+  if (state.moveCooldown > 0) return;
+
+  let nr = state.player.r, nc = state.player.c;
+  if (dir === 'up')    nr--;
+  else if (dir === 'down')  nr++;
+  else if (dir === 'left')  nc--;
+  else if (dir === 'right') nc++;
+
+  if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return;
+  if (state.level.maze[nr][nc] !== 0) return;
+
+  // Valid move
+  state.player.prevR = state.player.r;
+  state.player.prevC = state.player.c;
+  state.player.r = nr;
+  state.player.c = nc;
+  state.moveCooldown = state.powerups.shoes ? 100 : 200;
+
+  // Advance walk frame
+  state.player.frameTimer += state.moveCooldown;
+  if (state.player.frameTimer >= 150) {
+    state.player.frame = (state.player.frame + 1) % 4;
+    state.player.frameTimer = 0;
+  }
+
+  // Record thread
+  state.visited[nr][nc] = 1;
+  const last = state.thread[state.thread.length - 1];
+  if (last[0] !== nr || last[1] !== nc) state.thread.push([nr, nc]);
+
+  playSFX('step');
+  checkCollisions();
+}
+
+function checkCollisions() {
+  const pr = state.player.r, pc = state.player.c;
+
+  // Items
+  for (const type of ['sword', 'shoes', 'lantern']) {
+    const item = state.items[type];
+    if (!item.collected && item.r === pr && item.c === pc) {
+      showQuiz(
+        () => {
+          item.collected = true;
+          state.powerups[type] = true;
+          playSFX('pickup');
+        },
+        () => {
+          // Wrong: push back, no heart loss
+          state.player.r = state.player.prevR;
+          state.player.c = state.player.prevC;
+          state.thread.pop();
+        }
+      );
+      return;
+    }
+  }
+
+  // Pineapples
+  for (let i = 0; i < state.pineapples.length; i++) {
+    const p = state.pineapples[i];
+    if (p.r === pr && p.c === pc) {
+      showQuiz(
+        () => {
+          state.pineapples.splice(i, 1);
+          playSFX('defeat');
+        },
+        () => {
+          pushBack();
+          loseHeart();
+        }
+      );
+      return;
+    }
+  }
+
+  // Minotaur
+  if (state.minotaur && !state.minotaur.defeated && state.minotaur.r === pr && state.minotaur.c === pc) {
+    if (state.powerups.sword) {
+      showQuiz(
+        () => {
+          state.minotaur.defeated = true;
+          playSFX('roar');
+        },
+        () => {
+          pushBack();
+          loseHeart();
+        }
+      );
+    } else {
+      pushBack();
+      loseHeart();
+      playSFX('damage');
+    }
+    return;
+  }
+
+  // Exit
+  if (isExitCell(pr, pc) && state.minotaur && state.minotaur.defeated) {
+    triggerWin();
+  }
+}
+
+function pushBack() {
+  state.player.r = state.player.prevR;
+  state.player.c = state.player.prevC;
+  if (state.thread.length > 1) state.thread.pop();
+  state.player.stunTimer = 300;
+}
+
+function loseHeart() {
+  state.hearts--;
+  flashDamage();
+  playSFX('damage');
+  if (state.hearts <= 0) {
+    respawn();
+  }
+}
+
+function respawn() {
+  state.hearts = 3;
+  state.player.r = 1;
+  state.player.c = 1;
+  state.player.prevR = 1;
+  state.player.prevC = 1;
+  state.thread = [[1, 1]];
+  state.visited = Array.from({length: ROWS}, () => new Uint8Array(COLS));
+  state.visited[1][1] = 1;
+  // Minotaur respawns if not defeated
+  if (state.minotaur && !state.minotaur.defeated) {
+    state.minotaur.r = state.level.minoPos[0];
+    state.minotaur.c = state.level.minoPos[1];
+  }
+}
+
+function triggerWin() {
+  state.phase = 'win';
+  stopBGM();
+  playSFX('win');
+  document.getElementById('win-overlay').classList.add('visible');
+}
+
+function triggerLose() {
+  state.phase = 'lose';
+  stopBGM();
+  document.getElementById('lose-overlay').classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════
+// 11. ENEMY MOVEMENT
+// ═══════════════════════════════════════════════
+
+function stepEnemy(enemy) {
+  const maze = state.level.maze;
+  const dirs = [];
+  if (enemy.r > 0 && maze[enemy.r-1][enemy.c] === 0) dirs.push([-1,0]);
+  if (enemy.r < ROWS-1 && maze[enemy.r+1][enemy.c] === 0) dirs.push([1,0]);
+  if (enemy.c > 0 && maze[enemy.r][enemy.c-1] === 0) dirs.push([0,-1]);
+  if (enemy.c < COLS-1 && maze[enemy.r][enemy.c+1] === 0) dirs.push([0,1]);
+  if (dirs.length === 0) return;
+  const [dr, dc] = dirs[Math.floor(Math.random() * dirs.length)];
+  enemy.r += dr;
+  enemy.c += dc;
+}
+
+function updateEnemies(delta) {
+  const interval = 1000 / cfg.pineSpeed;
+  state.pineTimer += delta;
+  if (state.pineTimer >= interval) {
+    state.pineTimer = 0;
+    for (const p of state.pineapples) {
+      stepEnemy(p);
+      p.frame = 1 - p.frame;
+      // Pineapple touches player
+      if (p.r === state.player.r && p.c === state.player.c && state.phase === 'playing') {
+        showQuiz(
+          () => {
+            const idx = state.pineapples.indexOf(p);
+            if (idx !== -1) state.pineapples.splice(idx, 1);
+            playSFX('defeat');
+          },
+          () => { loseHeart(); }
+        );
+        return;
+      }
+    }
+  }
+
+  // Minotaur moves slower
+  state.minoTimer += delta;
+  if (state.minoTimer >= 600) {
+    state.minoTimer = 0;
+    if (state.minotaur && !state.minotaur.defeated) {
+      stepEnemy(state.minotaur);
+      state.minotaur.frame = 1 - state.minotaur.frame;
+      // Minotaur touches player
+      if (state.minotaur.r === state.player.r && state.minotaur.c === state.player.c && state.phase === 'playing') {
+        pushBack();
+        loseHeart();
+        playSFX('damage');
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+// 12. AUDIO
+// ═══════════════════════════════════════════════
+
+let audioCtx = null;
+let bgmNode = null;
+let bgmGain = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playSFX(type) {
+  if (cfg.muted) return;
+  try {
+    const ac = getAudioCtx();
+    const g = ac.createGain();
+    g.connect(ac.destination);
+
+    if (type === 'step') {
+      const buf = ac.createBuffer(1, ac.sampleRate * 0.05, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1) * (1 - i/data.length) * 0.15;
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.connect(g);
+      g.gain.value = 0.3;
+      src.start();
+    } else if (type === 'pickup') {
+      const notes = [523, 659, 784]; // C5 E5 G5
+      notes.forEach((freq, i) => {
+        const o = ac.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        const og = ac.createGain();
+        og.gain.setValueAtTime(0.4, ac.currentTime + i*0.1);
+        og.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i*0.1 + 0.1);
+        o.connect(og); og.connect(ac.destination);
+        o.start(ac.currentTime + i*0.1);
+        o.stop(ac.currentTime + i*0.1 + 0.12);
+      });
+    } else if (type === 'damage') {
+      const o = ac.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(200, ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(100, ac.currentTime + 0.2);
+      const og = ac.createGain();
+      og.gain.setValueAtTime(0.4, ac.currentTime);
+      og.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.2);
+      o.connect(og); og.connect(ac.destination);
+      o.start(); o.stop(ac.currentTime + 0.22);
+    } else if (type === 'roar') {
+      const o = ac.createOscillator();
+      o.type = 'square';
+      o.frequency.setValueAtTime(80, ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.4);
+      const og = ac.createGain();
+      og.gain.setValueAtTime(0.5, ac.currentTime);
+      og.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.4);
+      o.connect(og); og.connect(ac.destination);
+      o.start(); o.stop(ac.currentTime + 0.42);
+    } else if (type === 'defeat') {
+      const o = ac.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(300, ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(600, ac.currentTime + 0.15);
+      const og = ac.createGain();
+      og.gain.setValueAtTime(0.3, ac.currentTime);
+      og.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.15);
+      o.connect(og); og.connect(ac.destination);
+      o.start(); o.stop(ac.currentTime + 0.17);
+    } else if (type === 'win') {
+      const melody = [523, 587, 659, 784, 1047];
+      melody.forEach((freq, i) => {
+        const o = ac.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        const og = ac.createGain();
+        og.gain.setValueAtTime(0.4, ac.currentTime + i*0.15);
+        og.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i*0.15 + 0.15);
+        o.connect(og); og.connect(ac.destination);
+        o.start(ac.currentTime + i*0.15);
+        o.stop(ac.currentTime + i*0.15 + 0.17);
+      });
+    }
+  } catch(e) {}
+}
+
+function startBGM() {
+  if (cfg.muted) return;
+  try {
+    const ac = getAudioCtx();
+    bgmGain = ac.createGain();
+    bgmGain.gain.value = 0.15;
+    bgmGain.connect(ac.destination);
+
+    // Try loading bgm.mp3 first
+    fetch('bgm.mp3').then(r => {
+      if (r.ok) return r.arrayBuffer();
+      throw new Error('no file');
+    }).then(buf => ac.decodeAudioData(buf)).then(decoded => {
+      const src = ac.createBufferSource();
+      src.buffer = decoded;
+      src.loop = true;
+      src.connect(bgmGain);
+      src.start();
+      bgmNode = src;
+    }).catch(() => {
+      // Synthesized chiptune drone
+      synthBGM(ac);
+    });
+  } catch(e) {}
+}
+
+function synthBGM(ac) {
+  const osc1 = ac.createOscillator();
+  const osc2 = ac.createOscillator();
+  osc1.type = 'square';
+  osc2.type = 'square';
+  osc1.frequency.value = 110;
+  osc2.frequency.value = 220;
+
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 0.3;
+  const lfoGain = ac.createGain();
+  lfoGain.gain.value = 3;
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc1.frequency);
+  lfo.start();
+
+  osc1.connect(bgmGain);
+  osc2.connect(bgmGain);
+  osc1.start();
+  osc2.start();
+  bgmNode = { stop: () => { osc1.stop(); osc2.stop(); lfo.stop(); } };
+}
+
+function stopBGM() {
+  try { if (bgmNode) { bgmNode.stop(); bgmNode = null; } } catch(e) {}
+}
+
+function toggleMute() {
+  cfg.muted = !cfg.muted;
+  document.getElementById('mute-btn').textContent = cfg.muted ? '🔇' : '🔊';
+  if (bgmGain) bgmGain.gain.value = cfg.muted ? 0 : 0.15;
+}
+
+// ═══════════════════════════════════════════════
+// 13. DAMAGE FLASH
+// ═══════════════════════════════════════════════
+
+const flashEl = document.getElementById('damage-flash');
+function flashDamage() {
+  flashEl.style.display = 'block';
+  setTimeout(() => { flashEl.style.display = 'none'; }, 120);
+}
+
+// ═══════════════════════════════════════════════
+// 14. RENDER
+// ═══════════════════════════════════════════════
+
+function drawFrame() {
+  const maze = state.level.maze;
+  const W = canvas.width / dpr;
+  const H = canvas.height / dpr;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw cells
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x = c * CW, y = r * CH;
+      const vis = isVisible(r, c);
+      const been = state.visited[r][c];
+      const isExit = isExitCell(r, c);
+
+      if (!vis && !been && !isExit) {
+        ctx.fillStyle = '#0d0d1a';
+        ctx.fillRect(x, y, CW, CH);
+        continue;
+      }
+
+      if (maze[r][c] === 1) {
+        ctx.fillStyle = vis ? '#1a1a2e' : '#111122';
+        ctx.fillRect(x, y, CW, CH);
+        // Wall detail
+        if (vis) {
+          ctx.fillStyle = '#2a2a4e';
+          ctx.fillRect(x+1, y+1, CW-2, 1);
+          ctx.fillRect(x+1, y+1, 1, CH-2);
+        }
+      } else {
+        ctx.fillStyle = vis ? '#0d0d1a' : '#080810';
+        ctx.fillRect(x, y, CW, CH);
+        // Floor grid dots
+        if (vis) {
+          ctx.fillStyle = '#181828';
+          ctx.fillRect(x + CW/2 - 0.5, y + CH/2 - 0.5, 1, 1);
+        }
+      }
+
+      // Exit arch (always visible)
+      if (isExit) {
+        drawExit(x, y, CW, CH);
+      }
+    }
+  }
+
+  // Thread
+  drawThread();
+
+  // Items
+  for (const type of ['sword', 'shoes', 'lantern']) {
+    const item = state.items[type];
+    if (!item.collected && isVisible(item.r, item.c)) {
+      drawItem(item.c * CW, item.r * CH, CW, CH, type);
+    }
+  }
+
+  // Pineapples
+  for (const p of state.pineapples) {
+    if (isVisible(p.r, p.c)) {
+      drawPineapple(p.c * CW, p.r * CH, CW, CH, p.frame);
+    }
+  }
+
+  // Minotaur
+  if (state.minotaur && isVisible(state.minotaur.r, state.minotaur.c)) {
+    drawMinotaur(state.minotaur.c * CW, state.minotaur.r * CH, CW, CH,
+      state.minotaur.frame, state.minotaur.defeated);
+  }
+
+  // Player
+  const stunned = state.player.stunTimer > 0;
+  drawBunny(
+    state.player.c * CW, state.player.r * CH, CW, CH,
+    state.player.frame,
+    state.powerups.sword, state.powerups.shoes, stunned
+  );
+}
+
+// ═══════════════════════════════════════════════
+// 15. GAME LOOP
+// ═══════════════════════════════════════════════
+
+let lastTs = 0;
+
+function gameLoop(ts) {
+  const delta = Math.min(ts - lastTs, 100);
+  lastTs = ts;
+
+  if (state.phase === 'playing') {
+    // Timer
+    state.timerMs -= delta;
+    if (state.timerMs <= 0) {
+      state.timerMs = 0;
+      triggerLose();
+    }
+
+    // Cooldown
+    if (state.moveCooldown > 0) state.moveCooldown -= delta;
+    if (state.player.stunTimer > 0) state.player.stunTimer -= delta;
+
+    updateEnemies(delta);
+    drawFrame();
+    drawHUD();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════════
+// 16. START SCREEN ANIMATION
+// ═══════════════════════════════════════════════
+
+const startBunnyCanvas = document.getElementById('start-bunny-canvas');
+const sbCtx = startBunnyCanvas.getContext('2d');
+startBunnyCanvas.width = 80;
+startBunnyCanvas.height = 80;
+let startFrame = 0;
+
+function animateStartBunny() {
+  sbCtx.clearRect(0, 0, 80, 80);
+  // Draw bunny in 80x80
+  const u = 80 / 16;
+  // Ears
+  sbCtx.fillStyle = '#f0f0f0';
+  sbCtx.fillRect(4*u, 0, 2*u, 5*u);
+  sbCtx.fillStyle = '#ffaacc';
+  sbCtx.fillRect(4.5*u, 0.5*u, 1*u, 3.5*u);
+  sbCtx.fillStyle = '#f0f0f0';
+  sbCtx.fillRect(10*u, 0, 2*u, 5*u);
+  sbCtx.fillStyle = '#ffaacc';
+  sbCtx.fillRect(10.5*u, 0.5*u, 1*u, 3.5*u);
+  if (startFrame % 2 === 1) {
+    sbCtx.fillStyle = '#f0f0f0';
+    sbCtx.fillRect(4*u, 4*u, 2*u, u);
+    sbCtx.fillRect(10*u, 4*u, 2*u, u);
+  }
+  // Body
+  sbCtx.fillStyle = '#f0f0f0';
+  sbCtx.fillRect(3*u, 4*u, 10*u, 9*u);
+  sbCtx.fillStyle = '#222222';
+  sbCtx.fillRect(5*u, 6*u, 1.5*u, 1.5*u);
+  sbCtx.fillRect(9.5*u, 6*u, 1.5*u, 1.5*u);
+  sbCtx.fillStyle = '#ffaacc';
+  sbCtx.fillRect(7.5*u, 8*u, u, u);
+  // Feet
+  sbCtx.fillStyle = '#dddddd';
+  if (startFrame % 2 === 0) {
+    sbCtx.fillRect(4*u, 13*u, 3*u, 2*u);
+    sbCtx.fillRect(9*u, 12*u, 3*u, 2*u);
+  } else {
+    sbCtx.fillRect(4*u, 12*u, 3*u, 2*u);
+    sbCtx.fillRect(9*u, 13*u, 3*u, 2*u);
+  }
+  startFrame = (startFrame + 1) % 4;
+}
+
+setInterval(animateStartBunny, 200);
+
+// ═══════════════════════════════════════════════
+// 17. TOUCH CONTROLS
+// ═══════════════════════════════════════════════
+
+let touchX = 0, touchY = 0;
+
+document.addEventListener('touchstart', e => {
+  e.preventDefault();
+  touchX = e.touches[0].clientX;
+  touchY = e.touches[0].clientY;
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  e.preventDefault();
+  const dx = e.changedTouches[0].clientX - touchX;
+  const dy = e.changedTouches[0].clientY - touchY;
+  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+  if (Math.abs(dx) > Math.abs(dy)) movePlayer(dx > 0 ? 'right' : 'left');
+  else movePlayer(dy > 0 ? 'down' : 'up');
+}, { passive: false });
+
+// ═══════════════════════════════════════════════
+// 18. KEYBOARD CONTROLS
+// ═══════════════════════════════════════════════
+
+window.addEventListener('keydown', e => {
+  switch(e.key) {
+    case 'ArrowUp':    case 'w': case 'W': e.preventDefault(); movePlayer('up');    break;
+    case 'ArrowDown':  case 's': case 'S': e.preventDefault(); movePlayer('down');  break;
+    case 'ArrowLeft':  case 'a': case 'A': e.preventDefault(); movePlayer('left');  break;
+    case 'ArrowRight': case 'd': case 'D': e.preventDefault(); movePlayer('right'); break;
+    case 'Escape': togglePause(); break;
+  }
+});
+
+// ═══════════════════════════════════════════════
+// 19. UI BUTTON HANDLERS
+// ═══════════════════════════════════════════════
+
+function togglePause() {
+  if (state.phase === 'playing') {
+    state.phase = 'paused';
+    document.getElementById('pause-overlay').classList.add('visible');
+  } else if (state.phase === 'paused') {
+    state.phase = 'playing';
+    document.getElementById('pause-overlay').classList.remove('visible');
+  }
+}
+
+document.getElementById('pause-btn').addEventListener('click', togglePause);
+document.getElementById('resume-btn').addEventListener('click', togglePause);
+document.getElementById('mute-btn').addEventListener('click', toggleMute);
+
+document.getElementById('export-btn').addEventListener('click', exportMaze);
+
+document.getElementById('new-maze-btn').addEventListener('click', () => {
+  importedMaze = null;
+  initState();
+  document.getElementById('pause-overlay').classList.remove('visible');
+  startBGM();
+});
+
+// Preferences live updates
+document.getElementById('pref-math-min').addEventListener('change', e => cfg.mathMin = +e.target.value);
+document.getElementById('pref-math-max').addEventListener('change', e => cfg.mathMax = +e.target.value);
+document.getElementById('pref-pine-count').addEventListener('change', e => { cfg.pineCount = +e.target.value; });
+document.getElementById('pref-pine-speed').addEventListener('change', e => cfg.pineSpeed = +e.target.value);
+document.getElementById('pref-timer').addEventListener('change', e => cfg.timerDuration = +e.target.value);
+
+// Win/Lose buttons
+function playAgain() {
+  document.getElementById('win-overlay').classList.remove('visible');
+  document.getElementById('lose-overlay').classList.remove('visible');
+  initState();
+  startBGM();
+}
+function returnToStart() {
+  stopBGM();
+  document.getElementById('win-overlay').classList.remove('visible');
+  document.getElementById('lose-overlay').classList.remove('visible');
+  document.getElementById('start-overlay').classList.add('visible');
+}
+document.getElementById('win-again-btn').addEventListener('click', playAgain);
+document.getElementById('lose-again-btn').addEventListener('click', playAgain);
+document.getElementById('win-start-btn').addEventListener('click', returnToStart);
+document.getElementById('lose-start-btn').addEventListener('click', returnToStart);
+
+// Upload maze
+document.getElementById('upload-maze').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      importedMaze = JSON.parse(ev.target.result);
+    } catch(err) {
+      alert('Invalid maze JSON file.');
+    }
+  };
+  reader.readAsText(file);
+});
+
+// Start button
+document.getElementById('start-btn').addEventListener('click', () => {
+  cfg.timerDuration = +document.getElementById('start-timer').value;
+  document.getElementById('start-overlay').classList.remove('visible');
+  try { screen.orientation.lock('portrait'); } catch(e) {}
+  initState();
+  startBGM();
+  requestAnimationFrame(ts => { lastTs = ts; gameLoop(ts); });
+});
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
