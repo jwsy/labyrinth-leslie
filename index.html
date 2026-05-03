@@ -425,6 +425,23 @@ function generateMaze(seed) {
   grid[ROWS-2][COLS-3] = 0;
   grid[ROWS-3][COLS-2] = 0;
 
+  // Add loops: remove ~20% of "bridge" walls so the bunny never gets stuck
+  const candidates = [];
+  for (let r = 1; r < ROWS-1; r++) {
+    for (let c = 1; c < COLS-1; c++) {
+      if (grid[r][c] === 1) {
+        const horizBridge = grid[r-1][c] === 0 && grid[r+1][c] === 0;
+        const vertBridge  = grid[r][c-1] === 0 && grid[r][c+1] === 0;
+        if (horizBridge || vertBridge) candidates.push([r, c]);
+      }
+    }
+  }
+  candidates.sort(() => rand() - 0.5);
+  const removeCount = Math.floor(candidates.length * 0.20);
+  for (let i = 0; i < removeCount; i++) {
+    grid[candidates[i][0]][candidates[i][1]] = 0;
+  }
+
   return grid;
 }
 
@@ -1480,13 +1497,23 @@ setInterval(animateStartBunny, 200);
 
 let touchX = 0, touchY = 0;
 
+function isInteractiveEl(el) {
+  while (el) {
+    const tag = el.tagName;
+    if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT' || tag === 'A' || tag === 'LABEL') return true;
+    el = el.parentElement;
+  }
+  return false;
+}
+
 document.addEventListener('touchstart', e => {
-  e.preventDefault();
   touchX = e.touches[0].clientX;
   touchY = e.touches[0].clientY;
+  if (!isInteractiveEl(e.target)) e.preventDefault();
 }, { passive: false });
 
 document.addEventListener('touchend', e => {
+  if (isInteractiveEl(e.target)) return;
   e.preventDefault();
   const dx = e.changedTouches[0].clientX - touchX;
   const dy = e.changedTouches[0].clientY - touchY;
