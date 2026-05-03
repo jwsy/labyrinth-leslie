@@ -221,6 +221,25 @@
     }
     .quiz-btn:active, .quiz-btn:hover { background: #f0c040; color: #0d0d1a; }
 
+    #quiz-try-again {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    #quiz-try-again-label {
+      font-size: 22px;
+      color: #ff4444;
+      font-weight: bold;
+      letter-spacing: 2px;
+      font-family: monospace;
+    }
+    #quiz-try-again-solution {
+      font-size: 20px;
+      color: #f0c040;
+      font-family: monospace;
+    }
+
     /* ── START SCREEN ── */
     #start-overlay {
       background: #0d0d1a;
@@ -309,6 +328,10 @@
       </div>
       <div id="quiz-question"></div>
       <div id="quiz-choices"></div>
+      <div id="quiz-try-again">
+        <div id="quiz-try-again-label">TRY AGAIN</div>
+        <div id="quiz-try-again-solution"></div>
+      </div>
     </div>
   </div>
 
@@ -600,6 +623,7 @@ function initState() {
     quizCallback: null,
     explosions: [],
     animTimer: 0,
+    pineCarcasses: [],
   };
   state.visited[1][1] = 1;
 }
@@ -819,6 +843,36 @@ function drawPineapple(x, y, cw, ch, frame) {
   ctx.restore();
 }
 
+function drawPineappleCarcass(x, y, cw, ch) {
+  const s = Math.min(cw, ch);
+  const px = x + (cw - s) / 2;
+  const py = y + (ch - s) / 2;
+  const u = s / 16;
+  ctx.save();
+  ctx.translate(px, py);
+
+  // Wilted, greyed-out leaves
+  ctx.fillStyle = '#445533';
+  ctx.fillRect(6*u, 2*u, 1.5*u, 3*u);
+  ctx.fillRect(7.5*u, 1*u, 1.5*u, 3*u);
+  // Deflated body (squashed oval)
+  ctx.fillStyle = '#886600';
+  ctx.fillRect(5*u, 8*u, 6*u, 5*u);
+  ctx.fillRect(4*u, 9*u, 8*u, 3*u);
+  // X eyes
+  ctx.fillStyle = '#443300';
+  ctx.fillRect(6*u,   9*u,   1.5*u, 1.5*u);
+  ctx.fillRect(8.5*u, 9*u,   1.5*u, 1.5*u);
+  ctx.fillStyle = '#886600';
+  ctx.fillRect(6.5*u, 9.5*u, 0.5*u, 0.5*u);
+  ctx.fillRect(9*u,   9.5*u, 0.5*u, 0.5*u);
+  ctx.fillStyle = '#443300';
+  ctx.fillRect(6.5*u, 9.5*u, 0.4*u, 0.4*u);
+  ctx.fillRect(9*u,   9.5*u, 0.4*u, 0.4*u);
+
+  ctx.restore();
+}
+
 function drawItem(x, y, cw, ch, type) {
   // Glow
   ctx.save();
@@ -852,23 +906,23 @@ function drawItem(x, y, cw, ch, type) {
     // Rotated diagonal sword
     ctx.translate(cx, cy);
     ctx.rotate(Math.PI / 4);
-    // Blade body
-    ctx.fillRect(-7*u, -u, 13*u, 2*u);
-    // Pointed tip (triangle)
+    // Blade body (long — from crossguard to near tip)
+    ctx.fillRect(-u, -u, 11*u, 2*u);
+    // Pointed tip
     ctx.beginPath();
-    ctx.moveTo(6*u, -u);
-    ctx.lineTo(6*u, u);
-    ctx.lineTo(10.5*u, 0);
+    ctx.moveTo(10*u, -u);
+    ctx.lineTo(10*u, u);
+    ctx.lineTo(14*u, 0);
     ctx.closePath();
     ctx.fill();
     // Crossguard
     ctx.fillRect(-u, -4*u, 2*u, 8*u);
-    // Handle
+    // Handle (short — clearly shorter than blade)
     ctx.fillStyle = '#8B4513';
-    ctx.fillRect(-10*u, -1.5*u, 5*u, 3*u);
-    // Pommel
+    ctx.fillRect(-5.5*u, -1.5*u, 4.5*u, 3*u);
+    // Pommel (small knob)
     ctx.fillStyle = '#f0c040';
-    ctx.fillRect(-12*u, -2*u, 2.5*u, 4*u);
+    ctx.fillRect(-7.5*u, -1.5*u, 2*u, 3*u);
   } else if (type === 'shoes') {
     const s = Math.min(cw, ch) * 0.7;
     const px = x + (cw - s) / 2;
@@ -983,15 +1037,15 @@ function drawItemPreview(type) {
     const u = s / 16;
     pc.translate(cw/2, ch/2);
     pc.rotate(Math.PI / 4);
-    pc.fillRect(-7*u, -u, 13*u, 2*u);
+    pc.fillRect(-u, -u, 11*u, 2*u);
     pc.beginPath();
-    pc.moveTo(6*u, -u); pc.lineTo(6*u, u); pc.lineTo(10.5*u, 0);
+    pc.moveTo(10*u, -u); pc.lineTo(10*u, u); pc.lineTo(14*u, 0);
     pc.closePath(); pc.fill();
     pc.fillRect(-u, -4*u, 2*u, 8*u);
     pc.fillStyle = '#8B4513';
-    pc.fillRect(-10*u, -1.5*u, 5*u, 3*u);
+    pc.fillRect(-5.5*u, -1.5*u, 4.5*u, 3*u);
     pc.fillStyle = '#f0c040';
-    pc.fillRect(-12*u, -2*u, 2.5*u, 4*u);
+    pc.fillRect(-7.5*u, -1.5*u, 2*u, 3*u);
   } else if (type === 'shoes') {
     const s = Math.min(cw, ch) * 0.7;
     const px = (cw - s) / 2, py = (ch - s) / 2, u = s / 16;
@@ -1081,8 +1135,14 @@ function showQuizRound() {
   const b = min + Math.floor(Math.random() * (max - min + 1));
   const correct = a * b;
 
+  // Store on quizState so wrong-answer handler can reveal the answer
+  quizState.lastA = a;
+  quizState.lastB = b;
+  quizState.lastCorrect = correct;
+
   document.getElementById('quiz-label').innerHTML = getQuizLabelHTML(quizState.type, quizState.given);
   document.getElementById('quiz-question').textContent = `${a} × ${b} = ?`;
+  document.getElementById('quiz-try-again').style.display = 'none';
 
   const wrong = new Set([correct]);
   while (wrong.size < 3) {
@@ -1107,13 +1167,22 @@ function showQuizRound() {
           if (toastMsg) showToast(toastMsg);
           cb();
         } else {
-          // Show updated label with next lit segment, then new question
           showQuizRound();
         }
       } else {
-        const cb = quizState.onWrong;
-        hideQuiz();
-        cb();
+        // Show TRY AGAIN + correct answer, then dismiss after a beat
+        const { lastA, lastB, lastCorrect, onWrong } = quizState;
+        choicesEl.innerHTML = '';
+        document.getElementById('quiz-question').textContent = '';
+        document.getElementById('quiz-try-again-solution').textContent =
+          `${lastA} × ${lastB} = ${lastCorrect}`;
+        document.getElementById('quiz-try-again').style.display = 'flex';
+        clearTimeout(quizState._wrongTimer);
+        quizState._wrongTimer = setTimeout(() => {
+          const cb = onWrong;
+          hideQuiz();
+          cb();
+        }, 1600);
       }
     });
     choicesEl.appendChild(btn);
@@ -1149,6 +1218,8 @@ function showQuiz(onCorrect, onWrong, options) {
 function hideQuiz() {
   document.getElementById('quiz-overlay').classList.remove('visible');
   document.getElementById('quiz-item-preview').style.display = 'none';
+  document.getElementById('quiz-try-again').style.display = 'none';
+  if (quizState && quizState._wrongTimer) clearTimeout(quizState._wrongTimer);
   quizState = null;
   state.phase = 'playing';
 }
@@ -1166,23 +1237,43 @@ function showToast(msg) {
   }, 1400);
 }
 
-// ── Explosion particles ──
+// ── Firework explosion ──
 function spawnExplosion(r, c, colors) {
   const cx = c * CW + CW / 2;
   const cy = r * CH + CH / 2;
+  const base = Math.min(CW, CH);
   const particles = [];
-  for (let i = 0; i < 20; i++) {
-    const angle = (i / 20) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-    const speed = (0.35 + Math.random() * 0.65) * Math.min(CW, CH) * 0.55;
+
+  // Primary burst — fast, long-range streaks (firework arms)
+  const armCount = 28;
+  for (let i = 0; i < armCount; i++) {
+    const angle = (i / armCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
+    const speed = (1.8 + Math.random() * 2.2) * base * 1.4; // ~5× old speed
     particles.push({
       x: 0, y: 0,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      size: (0.12 + Math.random() * 0.22) * Math.min(CW, CH),
+      size: (0.28 + Math.random() * 0.32) * base,
       color: colors[Math.floor(Math.random() * colors.length)],
+      trail: true,
     });
   }
-  state.explosions.push({ cx, cy, particles, elapsed: 0, duration: 650 });
+
+  // Secondary shimmer — slower sparks that drift and fall
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = (0.5 + Math.random() * 1.0) * base * 1.4;
+    particles.push({
+      x: 0, y: 0,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - base * 0.8, // initial upward bias
+      size: (0.12 + Math.random() * 0.18) * base,
+      color: '#ffffff',
+      trail: false,
+    });
+  }
+
+  state.explosions.push({ cx, cy, particles, elapsed: 0, duration: 1100 });
 }
 
 function updateExplosions(delta) {
@@ -1193,7 +1284,8 @@ function updateExplosions(delta) {
     for (const p of exp.particles) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vy += 180 * dt; // gravity
+      p.vx *= (1 - 1.8 * dt); // air drag
+      p.vy += 420 * dt;        // gravity (stronger for big firework)
     }
     if (exp.elapsed >= exp.duration) state.explosions.splice(i, 1);
   }
@@ -1205,9 +1297,20 @@ function drawExplosions() {
     ctx.save();
     ctx.translate(exp.cx, exp.cy);
     for (const p of exp.particles) {
-      ctx.globalAlpha = life * life; // quadratic fade
+      const alpha = p.trail
+        ? Math.pow(life, 0.7)      // streaks stay visible longer
+        : Math.pow(life, 1.8);     // shimmer fades faster
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = p.color;
-      const s = p.size * (0.4 + 0.6 * life);
+      const s = p.size * (0.3 + 0.7 * life);
+      // Trail particles draw a short line backward for streak effect
+      if (p.trail && exp.elapsed > 20) {
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.4;
+        ctx.fillRect(p.x - p.vx * 0.025 - s * 0.4,
+                     p.y - p.vy * 0.025 - s * 0.4, s * 0.8, s * 0.8);
+        ctx.restore();
+      }
       ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
     }
     ctx.globalAlpha = 1;
@@ -1303,6 +1406,7 @@ function checkCollisions() {
         showQuiz(
           () => {
             spawnExplosion(p.r, p.c, ['#ffd700','#ffaa00','#228B22','#ff8800','#ffff44']);
+            state.pineCarcasses.push({ r: p.r, c: p.c });
             state.pineapples.splice(i, 1);
             playSFX('defeat');
           },
@@ -1436,6 +1540,7 @@ function updateEnemies(delta) {
               const idx = state.pineapples.indexOf(captPine);
               if (idx !== -1) {
                 spawnExplosion(captPine.r, captPine.c, ['#ffd700','#ffaa00','#228B22','#ff8800','#ffff44']);
+                state.pineCarcasses.push({ r: captPine.r, c: captPine.c });
                 state.pineapples.splice(idx, 1);
               }
               playSFX('defeat');
@@ -1703,6 +1808,13 @@ function drawFrame() {
     const item = state.items[type];
     if (!item.collected && isVisible(item.r, item.c)) {
       drawItem(item.c * CW, item.r * CH, CW, CH, type);
+    }
+  }
+
+  // Pineapple carcasses
+  for (const c of state.pineCarcasses) {
+    if (isVisible(c.r, c.c) || state.visited[c.r][c.c]) {
+      drawPineappleCarcass(c.c * CW, c.r * CH, CW, CH);
     }
   }
 
