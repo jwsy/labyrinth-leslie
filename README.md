@@ -6,7 +6,7 @@ A pixel-art PWA maze game for iOS/iPadOS. Navigate a dark labyrinth as a cute bu
 
 Inspired by the Greek myth of Theseus and the Minotaur.
 
-### (https://jwsy.github.io/labyrinth-leslie)[https://jwsy.github.io/labyrinth-leslie]
+### [https://jwsy.github.io/labyrinth-leslie](https://jwsy.github.io/labyrinth-leslie)
 
 <img width="581" height="322" alt="image" src="https://github.com/user-attachments/assets/28fcc712-3dec-413e-9386-18f9d5eec768" />
 
