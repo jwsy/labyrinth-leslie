@@ -5,9 +5,9 @@
 A pixel-art PWA maze game for iOS/iPadOS. Navigate a dark labyrinth as a cute bunny, collect three golden powerups, slay the Minotaur, and escape — before the timer runs out. 
 
 Inspired by the Greek myth of Theseus and the Minotaur.
-<h3><a href="https://jwsy.github.io/labyrinth-leslie/" target="_blank" rel="noopener noreferrer">
-  https://jwsy.github.io/labyrinth-leslie
-</a></h3>
+
+### (https://jwsy.github.io/labyrinth-leslie)[https://jwsy.github.io/labyrinth-leslie]
+
 <img width="581" height="322" alt="image" src="https://github.com/user-attachments/assets/28fcc712-3dec-413e-9386-18f9d5eec768" />
 
 ---
@@ -134,6 +134,6 @@ labyrinth-leslie/
 
 ## Credits
 
-Game design: Leslie
-Mythology: Ancient Greece
-Development: Claude Code. Code written completely by Claude Code using Sonnet 4.6 Medium, 2x 5 hr dev sessions on $20/month plan. Leslie's dad enabled GH Pages, clicked the button under Source labeled "GitHub Actions" and clicked Save.
+* Game design: Leslie
+* Mythology: Ancient Greece
+* Development: Claude Code. Code written completely by Claude Code using Sonnet 4.6 Medium, 2x 5 hr dev sessions on $20/month plan. Leslie's dad enabled GH Pages, clicked the button under Source labeled "GitHub Actions" and clicked Save.
