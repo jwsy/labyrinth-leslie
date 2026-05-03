@@ -146,6 +146,14 @@
     /* ── MATH QUIZ ── */
     #quiz-overlay { background: rgba(0,0,0,0.75); }
 
+    #quiz-label {
+      font-size: 18px;
+      color: #ff8844;
+      font-family: monospace;
+      margin-bottom: 6px;
+      min-height: 24px;
+    }
+
     #quiz-question {
       font-size: 32px;
       color: #f0c040;
@@ -249,6 +257,7 @@
   <!-- Math Quiz Overlay -->
   <div class="overlay" id="quiz-overlay">
     <div class="panel">
+      <div id="quiz-label"></div>
       <div id="quiz-question"></div>
       <div id="quiz-choices"></div>
     </div>
@@ -634,13 +643,15 @@ function drawBunny(x, y, cw, ch, frame, hasSword, hasShoes, stunned) {
     }
   }
 
-  // Sword
+  // Sword — large upright blade held in right hand
   if (hasSword) {
     ctx.fillStyle = '#f0c040';
-    ctx.fillRect(13*u, 6*u, 3*u, 1*u);  // blade horizontal
-    ctx.fillRect(12.5*u, 5.5*u, 1*u, 2*u); // crossguard vertical
+    ctx.fillRect(13.5*u, -2*u, 2*u, 10*u);    // blade (tall, tip above head)
+    ctx.fillRect(10.5*u, 7.5*u, 7*u, 1.5*u);  // crossguard (wide horizontal)
     ctx.fillStyle = '#8B4513';
-    ctx.fillRect(11.5*u, 6*u, 1.5*u, 1*u); // handle
+    ctx.fillRect(13.5*u, 9*u, 2*u, 3.5*u);    // handle
+    ctx.fillStyle = '#f0c040';
+    ctx.fillRect(13*u, 12.5*u, 3*u, 2*u);     // pommel
   }
 
   ctx.restore();
@@ -741,11 +752,6 @@ function drawPineapple(x, y, cw, ch, frame) {
 }
 
 function drawItem(x, y, cw, ch, type) {
-  const s = Math.min(cw, ch) * 0.7;
-  const px = x + (cw - s) / 2;
-  const py = y + (ch - s) / 2;
-  const u = s / 16;
-
   // Glow
   ctx.save();
   ctx.shadowColor = '#f0c040';
@@ -754,15 +760,26 @@ function drawItem(x, y, cw, ch, type) {
   ctx.fillStyle = '#f0c040';
 
   if (type === 'sword') {
-    ctx.translate(px, py);
+    // Larger diagonal sword (45° tip pointing top-right)
+    const s = Math.min(cw, ch) * 0.88;
+    const u = s / 16;
+    ctx.translate(x + cw / 2, y + ch / 2);
+    ctx.rotate(Math.PI / 4);
     // Blade
-    ctx.fillRect(2*u, 7*u, 12*u, 2*u);
-    // Crossguard
-    ctx.fillRect(7*u, 4*u, 2*u, 8*u);
+    ctx.fillRect(-7*u, -u, 14*u, 2*u);
+    // Crossguard (perpendicular to blade)
+    ctx.fillRect(-u, -4*u, 2*u, 8*u);
     // Handle
     ctx.fillStyle = '#8B4513';
-    ctx.fillRect(8.5*u, 6*u, 3*u, 4*u);
+    ctx.fillRect(-10*u, -1.5*u, 5*u, 3*u);
+    // Pommel
+    ctx.fillStyle = '#f0c040';
+    ctx.fillRect(-12*u, -2*u, 2.5*u, 4*u);
   } else if (type === 'shoes') {
+    const s = Math.min(cw, ch) * 0.7;
+    const px = x + (cw - s) / 2;
+    const py = y + (ch - s) / 2;
+    const u = s / 16;
     ctx.translate(px, py);
     // Left boot
     ctx.fillStyle = '#8B4513';
@@ -776,6 +793,10 @@ function drawItem(x, y, cw, ch, type) {
     ctx.fillRect(2*u, 8*u, 5*u, u);
     ctx.fillRect(9*u, 8*u, 5*u, u);
   } else if (type === 'lantern') {
+    const s = Math.min(cw, ch) * 0.7;
+    const px = x + (cw - s) / 2;
+    const py = y + (ch - s) / 2;
+    const u = s / 16;
     ctx.translate(px, py);
     // Handle
     ctx.fillRect(7*u, 1*u, 2*u, 3*u);
@@ -892,7 +913,7 @@ function drawHUD() {
 // 8. MATH QUIZ
 // ═══════════════════════════════════════════════
 
-function showQuiz(onCorrect, onWrong) {
+function showQuiz(onCorrect, onWrong, label) {
   state.phase = 'quiz';
   state.quizCallback = { onCorrect, onWrong };
 
@@ -901,6 +922,7 @@ function showQuiz(onCorrect, onWrong) {
   const b = min + Math.floor(Math.random() * (max - min + 1));
   const correct = a * b;
 
+  document.getElementById('quiz-label').textContent = label || '';
   document.getElementById('quiz-question').textContent = `${a} × ${b} = ?`;
 
   const wrong = new Set([correct]);
@@ -1026,16 +1048,23 @@ function checkCollisions() {
   for (let i = 0; i < state.pineapples.length; i++) {
     const p = state.pineapples[i];
     if (p.r === pr && p.c === pc) {
-      showQuiz(
-        () => {
-          state.pineapples.splice(i, 1);
-          playSFX('defeat');
-        },
-        () => {
-          pushBack();
-          loseHeart();
-        }
-      );
+      if (state.powerups.sword) {
+        showQuiz(
+          () => { state.pineapples.splice(i, 1); playSFX('defeat'); },
+          () => { pushBack(); loseHeart(); }
+        );
+      } else {
+        showQuiz(
+          () => {
+            // Dodge: enemy retreats to where player came from
+            p.r = state.player.prevR;
+            p.c = state.player.prevC;
+            playSFX('step');
+          },
+          () => { pushBack(); loseHeart(); },
+          'Dodge!'
+        );
+      }
       return;
     }
   }
@@ -1044,19 +1073,20 @@ function checkCollisions() {
   if (state.minotaur && !state.minotaur.defeated && state.minotaur.r === pr && state.minotaur.c === pc) {
     if (state.powerups.sword) {
       showQuiz(
-        () => {
-          state.minotaur.defeated = true;
-          playSFX('roar');
-        },
-        () => {
-          pushBack();
-          loseHeart();
-        }
+        () => { state.minotaur.defeated = true; playSFX('roar'); },
+        () => { pushBack(); loseHeart(); }
       );
     } else {
-      pushBack();
-      loseHeart();
-      playSFX('damage');
+      showQuiz(
+        () => {
+          // Dodge: minotaur retreats to where player came from
+          state.minotaur.r = state.player.prevR;
+          state.minotaur.c = state.player.prevC;
+          playSFX('step');
+        },
+        () => { pushBack(); loseHeart(); playSFX('damage'); },
+        'Dodge!'
+      );
     }
     return;
   }
@@ -1124,6 +1154,8 @@ function stepEnemy(enemy) {
   if (enemy.c > 0 && maze[enemy.r][enemy.c-1] === 0) dirs.push([0,-1]);
   if (enemy.c < COLS-1 && maze[enemy.r][enemy.c+1] === 0) dirs.push([0,1]);
   if (dirs.length === 0) return;
+  enemy.prevR = enemy.r;
+  enemy.prevC = enemy.c;
   const [dr, dc] = dirs[Math.floor(Math.random() * dirs.length)];
   enemy.r += dr;
   enemy.c += dc;
@@ -1139,14 +1171,19 @@ function updateEnemies(delta) {
       p.frame = 1 - p.frame;
       // Pineapple touches player
       if (p.r === state.player.r && p.c === state.player.c && state.phase === 'playing') {
-        showQuiz(
-          () => {
-            const idx = state.pineapples.indexOf(p);
-            if (idx !== -1) state.pineapples.splice(idx, 1);
-            playSFX('defeat');
-          },
-          () => { loseHeart(); }
-        );
+        if (state.powerups.sword) {
+          showQuiz(
+            () => { const idx = state.pineapples.indexOf(p); if (idx !== -1) state.pineapples.splice(idx, 1); playSFX('defeat'); },
+            () => { loseHeart(); }
+          );
+        } else {
+          const pp = p;
+          showQuiz(
+            () => { pp.r = pp.prevR ?? pp.r; pp.c = pp.prevC ?? pp.c; playSFX('step'); },
+            () => { loseHeart(); },
+            'Dodge!'
+          );
+        }
         return;
       }
     }
@@ -1161,9 +1198,18 @@ function updateEnemies(delta) {
       state.minotaur.frame = 1 - state.minotaur.frame;
       // Minotaur touches player
       if (state.minotaur.r === state.player.r && state.minotaur.c === state.player.c && state.phase === 'playing') {
-        pushBack();
-        loseHeart();
-        playSFX('damage');
+        if (state.powerups.sword) {
+          showQuiz(
+            () => { state.minotaur.defeated = true; playSFX('roar'); },
+            () => { loseHeart(); playSFX('damage'); }
+          );
+        } else {
+          showQuiz(
+            () => { state.minotaur.r = state.minotaur.prevR ?? state.minotaur.r; state.minotaur.c = state.minotaur.prevC ?? state.minotaur.c; playSFX('step'); },
+            () => { loseHeart(); playSFX('damage'); },
+            'Dodge!'
+          );
+        }
       }
     }
   }
