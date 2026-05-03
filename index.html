@@ -218,8 +218,12 @@
       padding: 12px 20px;
       cursor: pointer;
       min-width: 70px;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-appearance: none;
+      outline: none;
     }
     .quiz-btn:active, .quiz-btn:hover { background: #f0c040; color: #0d0d1a; }
+    .quiz-btn:focus { outline: none; background: #2a2a4e; color: #f0f0f0; }
 
     #quiz-try-again {
       display: none;
@@ -266,8 +270,8 @@
 
     #start-bunny-canvas {
       image-rendering: pixelated;
-      width: 80px;
-      height: 80px;
+      width: 100px;
+      height: 110px;
     }
 
     #start-panel {
@@ -301,7 +305,7 @@
       <canvas id="hearts-canvas" width="66" height="20"></canvas>
     </div>
     <div id="ui-center">
-      <span id="timer-display">0:55</span>
+      <span id="timer-display">2:00</span>
     </div>
     <div id="ui-right">
       <canvas id="powerup-canvas" width="66" height="20"></canvas>
@@ -358,14 +362,14 @@
         </select>
       </div>
       <div class="pref-row">
-        <span>Pineapples</span>
+        <span>Bats</span>
         <select id="pref-pine-count">
           <option value="1">1</option><option value="2">2</option>
           <option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
         </select>
       </div>
       <div class="pref-row">
-        <span>Pineapple speed</span>
+        <span>Bat speed</span>
         <select id="pref-pine-speed">
           <option value="0.5">Slow</option>
           <option value="1" selected>Medium</option>
@@ -376,8 +380,8 @@
         <span>Timer (next game)</span>
         <select id="pref-timer">
           <option value="30">30s</option><option value="45">45s</option>
-          <option value="55" selected>55s</option><option value="90">90s</option>
-          <option value="120">120s</option>
+          <option value="55">55s</option><option value="90">90s</option>
+          <option value="120" selected>120s</option>
         </select>
       </div>
       <button class="panel-btn" id="export-btn">Export Maze JSON</button>
@@ -409,19 +413,23 @@
   <!-- Start Screen -->
   <div class="overlay visible" id="start-overlay">
     <div id="start-title">Labyrinth<br>by Leslie</div>
-    <canvas id="start-bunny-canvas" width="80" height="80"></canvas>
+    <canvas id="start-bunny-canvas" width="100" height="110"></canvas>
     <div id="start-panel">
+      <div style="color:#aaaacc;font-family:monospace;font-size:13px;text-align:center;margin-bottom:14px;line-height:1.5;">
+        Find the <span style="color:#f0c040">Sword</span> &rarr; Slay the <span style="color:#ff4444">Minotaur</span><br>
+        &rarr; Escape through the <span style="color:#f0c040">golden arch</span> to win!
+      </div>
       <div class="pref-row">
-        <span style="color:#f0c040">Timer</span>
-        <select id="start-timer" style="background:#2a2a4e;border:1px solid #f0c040;border-radius:5px;color:#f0c040;font-family:monospace;font-size:13px;padding:2px 4px;">
+        <span style="color:#f0c040;font-size:16px;font-weight:bold;">Timer</span>
+        <select id="start-timer" style="background:#2a2a4e;border:1px solid #f0c040;border-radius:5px;color:#f0c040;font-family:monospace;font-size:15px;padding:3px 6px;">
           <option value="30">30s</option><option value="45">45s</option>
-          <option value="55" selected>55s</option><option value="90">90s</option>
-          <option value="120">120s</option>
+          <option value="55">55s</option><option value="90">90s</option>
+          <option value="120" selected>120s</option>
         </select>
       </div>
-      <div class="pref-row" style="margin-top:10px;">
-        <span style="color:#f0c040">Upload Maze</span>
-        <input type="file" id="upload-maze" accept=".json" style="color:#aaaacc;font-family:monospace;font-size:11px;max-width:140px;">
+      <div class="pref-row" style="margin-top:12px;">
+        <span style="color:#f0c040;font-size:16px;font-weight:bold;">Upload Maze</span>
+        <input type="file" id="upload-maze" accept=".json" style="color:#aaaacc;font-family:monospace;font-size:12px;max-width:130px;">
       </div>
       <button class="panel-btn" id="start-btn" style="margin-top:14px;font-size:18px;">Start Game</button>
     </div>
@@ -444,7 +452,7 @@ let cfg = {
   mathMax: 9,
   pineCount: 3,
   pineSpeed: 1,    // moves per second
-  timerDuration: 55,
+  timerDuration: 120,
   muted: false
 };
 
@@ -624,6 +632,7 @@ function initState() {
     explosions: [],
     animTimer: 0,
     pineCarcasses: [],
+    questHintTimer: 6000,
   };
   state.visited[1][1] = 1;
 }
@@ -812,38 +821,61 @@ function drawMinotaur(x, y, cw, ch, frame, defeated) {
   ctx.restore();
 }
 
-function drawPineapple(x, y, cw, ch, frame) {
+function drawBat(x, y, cw, ch, frame) {
   const s = Math.min(cw, ch);
   const px = x + (cw - s) / 2;
   const py = y + (ch - s) / 2;
   const u = s / 16;
-  const bob = frame === 0 ? 0 : 1;
+  const bob = frame === 0 ? 0 : -1; // bats flap upward
 
   ctx.save();
   ctx.translate(px, py);
 
-  // Leaves (crown)
-  ctx.fillStyle = '#228B22';
-  ctx.fillRect(6*u, (1+bob)*u, 1.5*u, 4*u);
-  ctx.fillRect(4*u, (2+bob)*u, 1.5*u, 3*u);
-  ctx.fillRect(10.5*u, (2+bob)*u, 1.5*u, 3*u);
-  ctx.fillRect(7.5*u, (0+bob)*u, 1.5*u, 4*u);
+  // Left wing
+  ctx.fillStyle = '#2a1a3a';
+  ctx.fillRect(0,     (5+bob)*u, 5*u, 3*u);
+  ctx.fillRect(1*u,   (4+bob)*u, 4*u, 2*u);
+  ctx.fillRect(2*u,   (3+bob)*u, 3*u, 2*u);
+  // Right wing
+  ctx.fillRect(11*u,  (5+bob)*u, 5*u, 3*u);
+  ctx.fillRect(11*u,  (4+bob)*u, 4*u, 2*u);
+  ctx.fillRect(11*u,  (3+bob)*u, 3*u, 2*u);
+  // Wing membrane highlight
+  ctx.fillStyle = '#3d2255';
+  ctx.fillRect(1*u,   (5+bob)*u, 4*u, 1*u);
+  ctx.fillRect(11*u,  (5+bob)*u, 4*u, 1*u);
 
-  // Body oval (approximated with rects)
-  ctx.fillStyle = '#ffd700';
-  ctx.fillRect(5*u, (5+bob)*u, 6*u, 8*u);
-  ctx.fillRect(4*u, (6+bob)*u, 8*u, 6*u);
-  ctx.fillRect(5*u, (12+bob)*u, 6*u, 1*u);
+  // Ears
+  ctx.fillStyle = '#1a1028';
+  ctx.fillRect(5*u,   (1+bob)*u, 2*u, 3*u);
+  ctx.fillRect(9*u,   (1+bob)*u, 2*u, 3*u);
+  // Inner ear
+  ctx.fillStyle = '#5a1050';
+  ctx.fillRect(5.5*u, (1.5+bob)*u, 1*u, 2*u);
+  ctx.fillRect(9.5*u, (1.5+bob)*u, 1*u, 2*u);
 
-  // Eyes
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(6*u, (7+bob)*u, 1.5*u, 1.5*u);
-  ctx.fillRect(8.5*u, (7+bob)*u, 1.5*u, 1.5*u);
+  // Body
+  ctx.fillStyle = '#1a1028';
+  ctx.fillRect(4*u,   (3+bob)*u, 8*u, 8*u);
+  ctx.fillRect(5*u,   (11+bob)*u, 6*u, 2*u);
+
+  // Red eyes
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(5.5*u, (5+bob)*u, 2*u, 2*u);
+  ctx.fillRect(8.5*u, (5+bob)*u, 2*u, 2*u);
+  // Eye glow
+  ctx.fillStyle = '#ff6666';
+  ctx.fillRect(6*u,   (5.5+bob)*u, 1*u, 1*u);
+  ctx.fillRect(9*u,   (5.5+bob)*u, 1*u, 1*u);
+
+  // Snout
+  ctx.fillStyle = '#2a1a3a';
+  ctx.fillRect(7*u,   (8+bob)*u, 2*u, 1.5*u);
 
   ctx.restore();
 }
 
-function drawPineappleCarcass(x, y, cw, ch) {
+function drawBatCarcass(x, y, cw, ch) {
   const s = Math.min(cw, ch);
   const px = x + (cw - s) / 2;
   const py = y + (ch - s) / 2;
@@ -851,24 +883,26 @@ function drawPineappleCarcass(x, y, cw, ch) {
   ctx.save();
   ctx.translate(px, py);
 
-  // Wilted, greyed-out leaves
-  ctx.fillStyle = '#445533';
-  ctx.fillRect(6*u, 2*u, 1.5*u, 3*u);
-  ctx.fillRect(7.5*u, 1*u, 1.5*u, 3*u);
-  // Deflated body (squashed oval)
-  ctx.fillStyle = '#886600';
-  ctx.fillRect(5*u, 8*u, 6*u, 5*u);
-  ctx.fillRect(4*u, 9*u, 8*u, 3*u);
-  // X eyes
-  ctx.fillStyle = '#443300';
-  ctx.fillRect(6*u,   9*u,   1.5*u, 1.5*u);
-  ctx.fillRect(8.5*u, 9*u,   1.5*u, 1.5*u);
-  ctx.fillStyle = '#886600';
-  ctx.fillRect(6.5*u, 9.5*u, 0.5*u, 0.5*u);
-  ctx.fillRect(9*u,   9.5*u, 0.5*u, 0.5*u);
-  ctx.fillStyle = '#443300';
-  ctx.fillRect(6.5*u, 9.5*u, 0.4*u, 0.4*u);
-  ctx.fillRect(9*u,   9.5*u, 0.4*u, 0.4*u);
+  // Folded wings (grey, drooped down)
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(1*u, 8*u, 5*u, 2*u);
+  ctx.fillRect(10*u, 8*u, 5*u, 2*u);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(2*u, 9*u, 3*u, 3*u);
+  ctx.fillRect(11*u, 9*u, 3*u, 3*u);
+
+  // Deflated body
+  ctx.fillStyle = '#181018';
+  ctx.fillRect(4*u, 7*u, 8*u, 5*u);
+  ctx.fillRect(5*u, 12*u, 6*u, 1.5*u);
+
+  // X eyes (dim red)
+  ctx.fillStyle = '#660000';
+  ctx.fillRect(5.5*u, 8.5*u, 2*u, 2*u);
+  ctx.fillRect(8.5*u, 8.5*u, 2*u, 2*u);
+  ctx.fillStyle = '#181018';
+  ctx.fillRect(6*u,   9*u,   1*u, 1*u);
+  ctx.fillRect(9*u,   9*u,   1*u, 1*u);
 
   ctx.restore();
 }
@@ -1158,6 +1192,7 @@ function showQuizRound() {
     btn.className = 'quiz-btn';
     btn.textContent = val;
     btn.addEventListener('click', () => {
+      btn.blur();
       if (val === correct) {
         quizState.given++;
         if (quizState.given >= quizState.required) {
@@ -1248,12 +1283,12 @@ function spawnExplosion(r, c, colors) {
   const armCount = 28;
   for (let i = 0; i < armCount; i++) {
     const angle = (i / armCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
-    const speed = (1.8 + Math.random() * 2.2) * base * 1.4; // ~5× old speed
+    const speed = (1.8 + Math.random() * 2.2) * base * 7; // 5× larger
     particles.push({
       x: 0, y: 0,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      size: (0.28 + Math.random() * 0.32) * base,
+      size: (1.4 + Math.random() * 1.6) * base,
       color: colors[Math.floor(Math.random() * colors.length)],
       trail: true,
     });
@@ -1262,18 +1297,18 @@ function spawnExplosion(r, c, colors) {
   // Secondary shimmer — slower sparks that drift and fall
   for (let i = 0; i < 20; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const speed = (0.5 + Math.random() * 1.0) * base * 1.4;
+    const speed = (0.5 + Math.random() * 1.0) * base * 7;
     particles.push({
       x: 0, y: 0,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - base * 0.8, // initial upward bias
-      size: (0.12 + Math.random() * 0.18) * base,
+      vy: Math.sin(angle) * speed - base * 4, // initial upward bias
+      size: (0.6 + Math.random() * 0.9) * base,
       color: '#ffffff',
       trail: false,
     });
   }
 
-  state.explosions.push({ cx, cy, particles, elapsed: 0, duration: 1100 });
+  state.explosions.push({ cx, cy, particles, elapsed: 0, duration: 1500 });
 }
 
 function updateExplosions(delta) {
@@ -1405,7 +1440,7 @@ function checkCollisions() {
       if (state.powerups.sword) {
         showQuiz(
           () => {
-            spawnExplosion(p.r, p.c, ['#ffd700','#ffaa00','#228B22','#ff8800','#ffff44']);
+            spawnExplosion(p.r, p.c, ['#aa00cc','#ff0000','#6600aa','#cc44ff','#440066']);
             state.pineCarcasses.push({ r: p.r, c: p.c });
             state.pineapples.splice(i, 1);
             playSFX('defeat');
@@ -1539,7 +1574,7 @@ function updateEnemies(delta) {
             () => {
               const idx = state.pineapples.indexOf(captPine);
               if (idx !== -1) {
-                spawnExplosion(captPine.r, captPine.c, ['#ffd700','#ffaa00','#228B22','#ff8800','#ffff44']);
+                spawnExplosion(captPine.r, captPine.c, ['#aa00cc','#ff0000','#6600aa','#cc44ff','#440066']);
                 state.pineCarcasses.push({ r: captPine.r, c: captPine.c });
                 state.pineapples.splice(idx, 1);
               }
@@ -1811,17 +1846,17 @@ function drawFrame() {
     }
   }
 
-  // Pineapple carcasses
+  // Bat carcasses
   for (const c of state.pineCarcasses) {
     if (isVisible(c.r, c.c) || state.visited[c.r][c.c]) {
-      drawPineappleCarcass(c.c * CW, c.r * CH, CW, CH);
+      drawBatCarcass(c.c * CW, c.r * CH, CW, CH);
     }
   }
 
-  // Pineapples
+  // Bats
   for (const p of state.pineapples) {
     if (isVisible(p.r, p.c)) {
-      drawPineapple(p.c * CW, p.r * CH, CW, CH, p.frame);
+      drawBat(p.c * CW, p.r * CH, CW, CH, p.frame);
     }
   }
 
@@ -1878,6 +1913,22 @@ function gameLoop(ts) {
     tickAnimation(delta);
     updateEnemies(delta);
     updateExplosions(delta);
+
+    // Periodic quest hints
+    state.questHintTimer -= delta;
+    if (state.questHintTimer <= 0) {
+      if (!state.powerups.sword) {
+        state.questHintTimer = 9000;
+        showToast('Find the Sword!');
+      } else if (state.minotaur && !state.minotaur.defeated) {
+        state.questHintTimer = 9000;
+        showToast('Slay the Minotaur & Escape!');
+      } else if (state.minotaur && state.minotaur.defeated) {
+        state.questHintTimer = 9000;
+        showToast('Escape the Labyrinth!');
+      }
+    }
+
     drawFrame();
     drawHUD();
   } else if (state.phase === 'quiz') {
@@ -1896,14 +1947,17 @@ function gameLoop(ts) {
 
 const startBunnyCanvas = document.getElementById('start-bunny-canvas');
 const sbCtx = startBunnyCanvas.getContext('2d');
-startBunnyCanvas.width = 80;
-startBunnyCanvas.height = 80;
+startBunnyCanvas.width = 100;
+startBunnyCanvas.height = 110;
 let startFrame = 0;
 
 function animateStartBunny() {
-  sbCtx.clearRect(0, 0, 80, 80);
-  // Draw bunny in 80x80
-  const u = 80 / 16;
+  sbCtx.clearRect(0, 0, 100, 110);
+  sbCtx.save();
+  // Offset down to leave room for sword tip above
+  sbCtx.translate(8, 28);
+  const u = 5; // 80px / 16 units
+
   // Ears
   sbCtx.fillStyle = '#f0f0f0';
   sbCtx.fillRect(4*u, 0, 2*u, 5*u);
@@ -1935,6 +1989,46 @@ function animateStartBunny() {
     sbCtx.fillRect(4*u, 12*u, 3*u, 2*u);
     sbCtx.fillRect(9*u, 13*u, 3*u, 2*u);
   }
+  // Shoes
+  sbCtx.fillStyle = '#8B4513';
+  if (startFrame % 2 === 0) {
+    sbCtx.fillRect(4*u, 14*u, 3*u, 1.5*u);
+    sbCtx.fillRect(9*u, 13*u, 3*u, 1.5*u);
+  } else {
+    sbCtx.fillRect(4*u, 13*u, 3*u, 1.5*u);
+    sbCtx.fillRect(9*u, 14*u, 3*u, 1.5*u);
+  }
+  // Shoe highlights
+  sbCtx.fillStyle = '#f0c040';
+  sbCtx.fillRect(4*u, startFrame % 2 === 0 ? 14*u : 13*u, 3*u, 0.5*u);
+  sbCtx.fillRect(9*u, startFrame % 2 === 0 ? 13*u : 14*u, 3*u, 0.5*u);
+
+  // Sword — upright on right side with sparkles
+  const t = Date.now() / 1000;
+  const sparkPts = [[14.5*u, 0], [13.9*u, 3.5*u], [15.1*u, 6*u]];
+  for (let si = 0; si < sparkPts.length; si++) {
+    sbCtx.globalAlpha = Math.abs(Math.sin(t * 5 + si * 2.1)) * 0.9;
+    sbCtx.fillStyle = '#ffffff';
+    const ss = u * 0.85;
+    sbCtx.fillRect(sparkPts[si][0] - ss/2, sparkPts[si][1] - ss/2, ss, ss);
+  }
+  sbCtx.globalAlpha = 1;
+  sbCtx.fillStyle = '#f0c040';
+  sbCtx.fillRect(13.5*u, -2*u, 2*u, 10*u);   // blade
+  sbCtx.fillRect(10.5*u, 7.5*u, 7*u, 1.5*u); // crossguard
+  sbCtx.fillStyle = '#8B4513';
+  sbCtx.fillRect(13.5*u, 9*u, 2*u, 3.5*u);   // handle
+  sbCtx.fillStyle = '#f0c040';
+  sbCtx.fillRect(13*u, 12.5*u, 3*u, 2*u);    // pommel
+  // Blade tip triangle
+  sbCtx.beginPath();
+  sbCtx.moveTo(13.5*u, -2*u);
+  sbCtx.lineTo(15.5*u, -2*u);
+  sbCtx.lineTo(14.5*u, -5.5*u);
+  sbCtx.closePath();
+  sbCtx.fill();
+
+  sbCtx.restore();
   startFrame = (startFrame + 1) % 4;
 }
 
