@@ -147,11 +147,53 @@
     #quiz-overlay { background: rgba(0,0,0,0.75); }
 
     #quiz-label {
-      font-size: 18px;
-      color: #ff8844;
+      font-size: 26px;
       font-family: monospace;
-      margin-bottom: 6px;
-      min-height: 24px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      min-height: 34px;
+      letter-spacing: 2px;
+    }
+
+    /* ── QUIZ ITEM PREVIEW ── */
+    #quiz-item-preview {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    #quiz-item-name {
+      font-size: 20px;
+      color: #f0c040;
+      font-weight: bold;
+      letter-spacing: 3px;
+      font-family: monospace;
+    }
+    #quiz-item-canvas {
+      image-rendering: pixelated;
+      width: 64px;
+      height: 64px;
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f0c040;
+      color: #0d0d1a;
+      font-family: monospace;
+      font-size: 22px;
+      font-weight: bold;
+      padding: 8px 24px;
+      border-radius: 12px;
+      pointer-events: none;
+      z-index: 60;
+      white-space: nowrap;
+      display: none;
+      transition: opacity 0.35s;
     }
 
     #quiz-question {
@@ -254,10 +296,17 @@
   <!-- Damage Flash -->
   <div id="damage-flash"></div>
 
+  <!-- Toast -->
+  <div id="toast"></div>
+
   <!-- Math Quiz Overlay -->
   <div class="overlay" id="quiz-overlay">
     <div class="panel">
       <div id="quiz-label"></div>
+      <div id="quiz-item-preview">
+        <div id="quiz-item-name"></div>
+        <canvas id="quiz-item-canvas" width="64" height="64"></canvas>
+      </div>
       <div id="quiz-question"></div>
       <div id="quiz-choices"></div>
     </div>
@@ -549,6 +598,8 @@ function initState() {
     minoTimer: 0,
     moveCooldown: 0,
     quizCallback: null,
+    explosions: [],
+    animTimer: 0,
   };
   state.visited[1][1] = 1;
 }
@@ -643,15 +694,32 @@ function drawBunny(x, y, cw, ch, frame, hasSword, hasShoes, stunned) {
     }
   }
 
-  // Sword — large upright blade held in right hand
+  // Sword — large upright blade with pointy tip and sparkles
   if (hasSword) {
+    // Time-based sparkle highlights along blade
+    const t = Date.now() / 1000;
+    const sparkPts = [[14.5*u, 0*u], [13.9*u, 3.5*u], [15.1*u, 6*u]];
+    for (let si = 0; si < sparkPts.length; si++) {
+      ctx.globalAlpha = Math.abs(Math.sin(t * 5 + si * 2.1)) * 0.9;
+      ctx.fillStyle = '#ffffff';
+      const ss = u * 0.85;
+      ctx.fillRect(sparkPts[si][0] - ss/2, sparkPts[si][1] - ss/2, ss, ss);
+    }
+    ctx.globalAlpha = 1;
     ctx.fillStyle = '#f0c040';
-    ctx.fillRect(13.5*u, -2*u, 2*u, 10*u);    // blade (tall, tip above head)
-    ctx.fillRect(10.5*u, 7.5*u, 7*u, 1.5*u);  // crossguard (wide horizontal)
+    ctx.fillRect(13.5*u, -2*u, 2*u, 10*u);    // blade
+    ctx.fillRect(10.5*u, 7.5*u, 7*u, 1.5*u);  // crossguard
     ctx.fillStyle = '#8B4513';
     ctx.fillRect(13.5*u, 9*u, 2*u, 3.5*u);    // handle
     ctx.fillStyle = '#f0c040';
     ctx.fillRect(13*u, 12.5*u, 3*u, 2*u);     // pommel
+    // Pointed blade tip (triangle above blade)
+    ctx.beginPath();
+    ctx.moveTo(13.5*u, -2*u);
+    ctx.lineTo(15.5*u, -2*u);
+    ctx.lineTo(14.5*u, -5.5*u);
+    ctx.closePath();
+    ctx.fill();
   }
 
   ctx.restore();
@@ -760,14 +828,40 @@ function drawItem(x, y, cw, ch, type) {
   ctx.fillStyle = '#f0c040';
 
   if (type === 'sword') {
-    // Larger diagonal sword (45° tip pointing top-right)
     const s = Math.min(cw, ch) * 0.88;
     const u = s / 16;
-    ctx.translate(x + cw / 2, y + ch / 2);
+    const cx = x + cw / 2, cy = y + ch / 2;
+
+    // Orbiting sparkles (in world coords, before rotation)
+    const t = Date.now() / 1000;
+    ctx.shadowBlur = 0;
+    for (let si = 0; si < 5; si++) {
+      const ang = t * 1.8 + si * (Math.PI * 2 / 5);
+      const orb = Math.min(cw, ch) * 0.50;
+      const sx = cx + Math.cos(ang) * orb;
+      const sy2 = cy + Math.sin(ang) * orb;
+      ctx.globalAlpha = 0.3 + 0.7 * Math.abs(Math.sin(t * 3.7 + si * 1.1));
+      ctx.fillStyle = '#ffffff';
+      const ss = Math.min(cw, ch) * 0.06;
+      ctx.fillRect(sx - ss, sy2 - ss, ss * 2, ss * 2);
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#f0c040';
+
+    // Rotated diagonal sword
+    ctx.translate(cx, cy);
     ctx.rotate(Math.PI / 4);
-    // Blade
-    ctx.fillRect(-7*u, -u, 14*u, 2*u);
-    // Crossguard (perpendicular to blade)
+    // Blade body
+    ctx.fillRect(-7*u, -u, 13*u, 2*u);
+    // Pointed tip (triangle)
+    ctx.beginPath();
+    ctx.moveTo(6*u, -u);
+    ctx.lineTo(6*u, u);
+    ctx.lineTo(10.5*u, 0);
+    ctx.closePath();
+    ctx.fill();
+    // Crossguard
     ctx.fillRect(-u, -4*u, 2*u, 8*u);
     // Handle
     ctx.fillStyle = '#8B4513';
@@ -874,6 +968,54 @@ function drawItemIcon(ctx2d, x, y, size, type) {
   }
 }
 
+function drawItemPreview(type) {
+  const cvs = document.getElementById('quiz-item-canvas');
+  const pc = cvs.getContext('2d');
+  pc.clearRect(0, 0, 64, 64);
+  const cw = 64, ch = 64;
+  pc.save();
+  pc.fillStyle = '#f0c040';
+  pc.shadowColor = '#f0c040';
+  pc.shadowBlur = 5;
+
+  if (type === 'sword') {
+    const s = Math.min(cw, ch) * 0.88;
+    const u = s / 16;
+    pc.translate(cw/2, ch/2);
+    pc.rotate(Math.PI / 4);
+    pc.fillRect(-7*u, -u, 13*u, 2*u);
+    pc.beginPath();
+    pc.moveTo(6*u, -u); pc.lineTo(6*u, u); pc.lineTo(10.5*u, 0);
+    pc.closePath(); pc.fill();
+    pc.fillRect(-u, -4*u, 2*u, 8*u);
+    pc.fillStyle = '#8B4513';
+    pc.fillRect(-10*u, -1.5*u, 5*u, 3*u);
+    pc.fillStyle = '#f0c040';
+    pc.fillRect(-12*u, -2*u, 2.5*u, 4*u);
+  } else if (type === 'shoes') {
+    const s = Math.min(cw, ch) * 0.7;
+    const px = (cw - s) / 2, py = (ch - s) / 2, u = s / 16;
+    pc.translate(px, py);
+    pc.fillStyle = '#8B4513';
+    pc.fillRect(2*u, 8*u, 5*u, 5*u); pc.fillRect(2*u, 11*u, 7*u, 2*u);
+    pc.fillRect(9*u, 8*u, 5*u, 5*u); pc.fillRect(7*u, 11*u, 7*u, 2*u);
+    pc.fillStyle = '#f0c040';
+    pc.fillRect(2*u, 8*u, 5*u, u); pc.fillRect(9*u, 8*u, 5*u, u);
+  } else if (type === 'lantern') {
+    const s = Math.min(cw, ch) * 0.7;
+    const px = (cw - s) / 2, py = (ch - s) / 2, u = s / 16;
+    pc.translate(px, py);
+    pc.fillRect(7*u, 1*u, 2*u, 3*u);
+    pc.fillRect(5*u, 4*u, 6*u, 8*u); pc.fillRect(4*u, 5*u, 8*u, 6*u);
+    pc.fillStyle = '#ffffff'; pc.globalAlpha = 0.6;
+    pc.fillRect(6*u, 5*u, 4*u, 5*u); pc.globalAlpha = 1;
+  }
+  pc.restore();
+
+  document.getElementById('quiz-item-name').textContent = type.toUpperCase();
+  document.getElementById('quiz-item-preview').style.display = 'flex';
+}
+
 // ═══════════════════════════════════════════════
 // 7. HUD CANVASES
 // ═══════════════════════════════════════════════
@@ -913,16 +1055,33 @@ function drawHUD() {
 // 8. MATH QUIZ
 // ═══════════════════════════════════════════════
 
-function showQuiz(onCorrect, onWrong, label) {
-  state.phase = 'quiz';
-  state.quizCallback = { onCorrect, onWrong };
+// ── Multi-round quiz state ──
+let quizState = null;
 
+function getQuizLabelHTML(type, given) {
+  if (type === 'dodge') {
+    const parts = ['DOD', 'GE!'];
+    return parts.map((p, i) =>
+      `<span style="color:${i < given ? '#ff8844' : '#553322'}">${p}</span>`
+    ).join('');
+  }
+  if (type === 'vanquish') {
+    const parts = ['VAN', 'QUI', 'SH!'];
+    return parts.map((p, i) =>
+      `<span style="color:${i < given ? '#f0c040' : '#443322'}">${p}</span>`
+    ).join('');
+  }
+  return '';
+}
+
+function showQuizRound() {
+  if (!quizState) return;
   const min = cfg.mathMin, max = cfg.mathMax;
   const a = min + Math.floor(Math.random() * (max - min + 1));
   const b = min + Math.floor(Math.random() * (max - min + 1));
   const correct = a * b;
 
-  document.getElementById('quiz-label').textContent = label || '';
+  document.getElementById('quiz-label').innerHTML = getQuizLabelHTML(quizState.type, quizState.given);
   document.getElementById('quiz-question').textContent = `${a} × ${b} = ?`;
 
   const wrong = new Set([correct]);
@@ -939,22 +1098,121 @@ function showQuiz(onCorrect, onWrong, label) {
     btn.className = 'quiz-btn';
     btn.textContent = val;
     btn.addEventListener('click', () => {
-      hideQuiz();
       if (val === correct) {
-        state.quizCallback.onCorrect();
+        quizState.given++;
+        if (quizState.given >= quizState.required) {
+          const toastMsg = quizState.toastMsg;
+          const cb = quizState.onCorrect;
+          hideQuiz();
+          if (toastMsg) showToast(toastMsg);
+          cb();
+        } else {
+          // Show updated label with next lit segment, then new question
+          showQuizRound();
+        }
       } else {
-        state.quizCallback.onWrong();
+        const cb = quizState.onWrong;
+        hideQuiz();
+        cb();
       }
     });
     choicesEl.appendChild(btn);
   }
+}
 
+function showQuiz(onCorrect, onWrong, options) {
+  state.phase = 'quiz';
+  // Legacy: if options is a plain string label, treat as dodge
+  if (typeof options === 'string') {
+    options = { type: 'dodge', answersRequired: 2, toastMsg: 'DODGED!' };
+  }
+  options = options || {};
+  quizState = {
+    onCorrect,
+    onWrong,
+    type: options.type || '',
+    required: options.answersRequired || 1,
+    given: 0,
+    toastMsg: options.toastMsg || null,
+  };
+
+  if (options.type === 'item' && options.itemType) {
+    drawItemPreview(options.itemType);
+  } else {
+    document.getElementById('quiz-item-preview').style.display = 'none';
+  }
+
+  showQuizRound();
   document.getElementById('quiz-overlay').classList.add('visible');
 }
 
 function hideQuiz() {
   document.getElementById('quiz-overlay').classList.remove('visible');
+  document.getElementById('quiz-item-preview').style.display = 'none';
+  quizState = null;
   state.phase = 'playing';
+}
+
+// ── Toast notification ──
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.opacity = '1';
+  clearTimeout(el._toastTimer);
+  el._toastTimer = setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => { el.style.display = 'none'; }, 380);
+  }, 1400);
+}
+
+// ── Explosion particles ──
+function spawnExplosion(r, c, colors) {
+  const cx = c * CW + CW / 2;
+  const cy = r * CH + CH / 2;
+  const particles = [];
+  for (let i = 0; i < 20; i++) {
+    const angle = (i / 20) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+    const speed = (0.35 + Math.random() * 0.65) * Math.min(CW, CH) * 0.55;
+    particles.push({
+      x: 0, y: 0,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: (0.12 + Math.random() * 0.22) * Math.min(CW, CH),
+      color: colors[Math.floor(Math.random() * colors.length)],
+    });
+  }
+  state.explosions.push({ cx, cy, particles, elapsed: 0, duration: 650 });
+}
+
+function updateExplosions(delta) {
+  const dt = delta / 1000;
+  for (let i = state.explosions.length - 1; i >= 0; i--) {
+    const exp = state.explosions[i];
+    exp.elapsed += delta;
+    for (const p of exp.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 180 * dt; // gravity
+    }
+    if (exp.elapsed >= exp.duration) state.explosions.splice(i, 1);
+  }
+}
+
+function drawExplosions() {
+  for (const exp of state.explosions) {
+    const life = Math.max(0, 1 - exp.elapsed / exp.duration);
+    ctx.save();
+    ctx.translate(exp.cx, exp.cy);
+    for (const p of exp.particles) {
+      ctx.globalAlpha = life * life; // quadratic fade
+      ctx.fillStyle = p.color;
+      const s = p.size * (0.4 + 0.6 * life);
+      ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -1004,13 +1262,6 @@ function movePlayer(dir) {
   state.player.c = nc;
   state.moveCooldown = state.powerups.shoes ? 100 : 200;
 
-  // Advance walk frame
-  state.player.frameTimer += state.moveCooldown;
-  if (state.player.frameTimer >= 150) {
-    state.player.frame = (state.player.frame + 1) % 4;
-    state.player.frameTimer = 0;
-  }
-
   // Record thread
   state.visited[nr][nc] = 1;
   const last = state.thread[state.thread.length - 1];
@@ -1034,11 +1285,11 @@ function checkCollisions() {
           playSFX('pickup');
         },
         () => {
-          // Wrong: push back, no heart loss
           state.player.r = state.player.prevR;
           state.player.c = state.player.prevC;
           state.thread.pop();
-        }
+        },
+        { type: 'item', itemType: type, answersRequired: 1, toastMsg: 'ACQUIRED ' + type.toUpperCase() }
       );
       return;
     }
@@ -1050,19 +1301,23 @@ function checkCollisions() {
     if (p.r === pr && p.c === pc) {
       if (state.powerups.sword) {
         showQuiz(
-          () => { state.pineapples.splice(i, 1); playSFX('defeat'); },
-          () => { pushBack(); loseHeart(); }
+          () => {
+            spawnExplosion(p.r, p.c, ['#ffd700','#ffaa00','#228B22','#ff8800','#ffff44']);
+            state.pineapples.splice(i, 1);
+            playSFX('defeat');
+          },
+          () => { pushBack(); loseHeart(); },
+          { type: 'vanquish', answersRequired: 3, toastMsg: 'VANQUISHED!' }
         );
       } else {
         showQuiz(
           () => {
-            // Dodge: enemy retreats to where player came from
             p.r = state.player.prevR;
             p.c = state.player.prevC;
             playSFX('step');
           },
           () => { pushBack(); loseHeart(); },
-          'Dodge!'
+          { type: 'dodge', answersRequired: 2, toastMsg: 'DODGED!' }
         );
       }
       return;
@@ -1073,19 +1328,23 @@ function checkCollisions() {
   if (state.minotaur && !state.minotaur.defeated && state.minotaur.r === pr && state.minotaur.c === pc) {
     if (state.powerups.sword) {
       showQuiz(
-        () => { state.minotaur.defeated = true; playSFX('roar'); },
-        () => { pushBack(); loseHeart(); }
+        () => {
+          spawnExplosion(state.minotaur.r, state.minotaur.c, ['#4a2800','#6b3a00','#ff0000','#883300','#cc4400','#ff6622']);
+          state.minotaur.defeated = true;
+          playSFX('roar');
+        },
+        () => { pushBack(); loseHeart(); },
+        { type: 'vanquish', answersRequired: 3, toastMsg: 'VANQUISHED!' }
       );
     } else {
       showQuiz(
         () => {
-          // Dodge: minotaur retreats to where player came from
           state.minotaur.r = state.player.prevR;
           state.minotaur.c = state.player.prevC;
           playSFX('step');
         },
         () => { pushBack(); loseHeart(); playSFX('damage'); },
-        'Dodge!'
+        { type: 'dodge', answersRequired: 2, toastMsg: 'DODGED!' }
       );
     }
     return;
@@ -1168,20 +1427,28 @@ function updateEnemies(delta) {
     state.pineTimer = 0;
     for (const p of state.pineapples) {
       stepEnemy(p);
-      p.frame = 1 - p.frame;
       // Pineapple touches player
       if (p.r === state.player.r && p.c === state.player.c && state.phase === 'playing') {
         if (state.powerups.sword) {
+          const captPine = p;
           showQuiz(
-            () => { const idx = state.pineapples.indexOf(p); if (idx !== -1) state.pineapples.splice(idx, 1); playSFX('defeat'); },
-            () => { loseHeart(); }
+            () => {
+              const idx = state.pineapples.indexOf(captPine);
+              if (idx !== -1) {
+                spawnExplosion(captPine.r, captPine.c, ['#ffd700','#ffaa00','#228B22','#ff8800','#ffff44']);
+                state.pineapples.splice(idx, 1);
+              }
+              playSFX('defeat');
+            },
+            () => { loseHeart(); },
+            { type: 'vanquish', answersRequired: 3, toastMsg: 'VANQUISHED!' }
           );
         } else {
           const pp = p;
           showQuiz(
             () => { pp.r = pp.prevR ?? pp.r; pp.c = pp.prevC ?? pp.c; playSFX('step'); },
             () => { loseHeart(); },
-            'Dodge!'
+            { type: 'dodge', answersRequired: 2, toastMsg: 'DODGED!' }
           );
         }
         return;
@@ -1195,19 +1462,23 @@ function updateEnemies(delta) {
     state.minoTimer = 0;
     if (state.minotaur && !state.minotaur.defeated) {
       stepEnemy(state.minotaur);
-      state.minotaur.frame = 1 - state.minotaur.frame;
       // Minotaur touches player
       if (state.minotaur.r === state.player.r && state.minotaur.c === state.player.c && state.phase === 'playing') {
         if (state.powerups.sword) {
           showQuiz(
-            () => { state.minotaur.defeated = true; playSFX('roar'); },
-            () => { loseHeart(); playSFX('damage'); }
+            () => {
+              spawnExplosion(state.minotaur.r, state.minotaur.c, ['#4a2800','#6b3a00','#ff0000','#883300','#cc4400','#ff6622']);
+              state.minotaur.defeated = true;
+              playSFX('roar');
+            },
+            () => { loseHeart(); playSFX('damage'); },
+            { type: 'vanquish', answersRequired: 3, toastMsg: 'VANQUISHED!' }
           );
         } else {
           showQuiz(
             () => { state.minotaur.r = state.minotaur.prevR ?? state.minotaur.r; state.minotaur.c = state.minotaur.prevC ?? state.minotaur.c; playSFX('step'); },
             () => { loseHeart(); playSFX('damage'); },
-            'Dodge!'
+            { type: 'dodge', answersRequired: 2, toastMsg: 'DODGED!' }
           );
         }
       }
@@ -1448,6 +1719,9 @@ function drawFrame() {
       state.minotaur.frame, state.minotaur.defeated);
   }
 
+  // Explosions (drawn above sprites, below player)
+  drawExplosions();
+
   // Player
   const stunned = state.player.stunTimer > 0;
   drawBunny(
@@ -1463,6 +1737,16 @@ function drawFrame() {
 
 let lastTs = 0;
 
+function tickAnimation(delta) {
+  state.animTimer += delta;
+  while (state.animTimer >= 280) {
+    state.animTimer -= 280;
+    state.player.frame = (state.player.frame + 1) % 4;
+    for (const p of state.pineapples) p.frame = 1 - p.frame;
+    if (state.minotaur && !state.minotaur.defeated) state.minotaur.frame = 1 - state.minotaur.frame;
+  }
+}
+
 function gameLoop(ts) {
   const delta = Math.min(ts - lastTs, 100);
   lastTs = ts;
@@ -1475,13 +1759,20 @@ function gameLoop(ts) {
       triggerLose();
     }
 
-    // Cooldown
+    // Cooldown / stun
     if (state.moveCooldown > 0) state.moveCooldown -= delta;
     if (state.player.stunTimer > 0) state.player.stunTimer -= delta;
 
+    tickAnimation(delta);
     updateEnemies(delta);
+    updateExplosions(delta);
     drawFrame();
     drawHUD();
+  } else if (state.phase === 'quiz') {
+    // Keep world animated + explosion playing while quiz overlay is showing
+    tickAnimation(delta);
+    updateExplosions(delta);
+    drawFrame();
   }
 
   requestAnimationFrame(gameLoop);
