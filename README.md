@@ -1,8 +1,12 @@
+<img width="264" height="180" alt="image" src="https://github.com/user-attachments/assets/d5dde648-3465-4fb6-bddc-c753f49fa7fb" />
+
 # Labyrinth by Leslie
 
 A pixel-art PWA maze game for iOS/iPadOS. Navigate a dark labyrinth as a cute bunny, collect three golden powerups, slay the Minotaur, and escape — before the timer runs out.
 
 Inspired by the Greek myth of Theseus and the Minotaur.
+
+<img width="581" height="322" alt="image" src="https://github.com/user-attachments/assets/28fcc712-3dec-413e-9386-18f9d5eec768" />
 
 ---
 
