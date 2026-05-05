@@ -270,7 +270,7 @@
 
     #start-bunny-canvas {
       image-rendering: pixelated;
-      width: 100px;
+      width: 200px;
       height: 110px;
     }
 
@@ -394,6 +394,7 @@
   <div class="overlay" id="win-overlay" style="background:rgba(0,0,0,0.85);">
     <div class="panel">
       <h2>🏆 You Escaped!</h2>
+      <canvas id="win-hero-canvas" width="160" height="130" style="image-rendering:pixelated;display:block;margin:8px auto;"></canvas>
       <p>The Minotaur is slain.<br>Theseus would be proud.</p>
       <button class="panel-btn" id="win-again-btn">Play Again</button>
       <button class="panel-btn" id="win-start-btn">Return to Start</button>
@@ -413,7 +414,7 @@
   <!-- Start Screen -->
   <div class="overlay visible" id="start-overlay">
     <div id="start-title">Labyrinth<br>by Leslie</div>
-    <canvas id="start-bunny-canvas" width="100" height="110"></canvas>
+    <canvas id="start-bunny-canvas" width="200" height="110"></canvas>
     <div id="start-panel">
       <div style="color:#aaaacc;font-family:monospace;font-size:13px;text-align:center;margin-bottom:14px;line-height:1.5;">
         Find the <span style="color:#f0c040">Sword</span> &rarr; Slay the <span style="color:#ff4444">Minotaur</span><br>
@@ -1527,11 +1528,133 @@ function respawn() {
   }
 }
 
+let winHeroInterval = null;
+
+function animateWinHero() {
+  const wCanvas = document.getElementById('win-hero-canvas');
+  const wCtx = wCanvas.getContext('2d');
+  const hasSword = state.powerups.sword;
+  const hasShoes = state.powerups.shoes;
+  const hasLantern = state.powerups.lantern;
+  let winFrame = 0;
+
+  function drawWinFrame() {
+    wCtx.clearRect(0, 0, 160, 130);
+    wCtx.save();
+    wCtx.translate(30, 36);
+    const u = 5;
+
+    // Ears
+    wCtx.fillStyle = '#f0f0f0';
+    wCtx.fillRect(4*u, 0, 2*u, 5*u);
+    wCtx.fillStyle = '#ffaacc';
+    wCtx.fillRect(4.5*u, 0.5*u, u, 3.5*u);
+    wCtx.fillStyle = '#f0f0f0';
+    wCtx.fillRect(10*u, 0, 2*u, 5*u);
+    wCtx.fillStyle = '#ffaacc';
+    wCtx.fillRect(10.5*u, 0.5*u, u, 3.5*u);
+    if (winFrame % 2 === 1) {
+      wCtx.fillStyle = '#f0f0f0';
+      wCtx.fillRect(4*u, 4*u, 2*u, u);
+      wCtx.fillRect(10*u, 4*u, 2*u, u);
+    }
+
+    // Body
+    wCtx.fillStyle = '#f0f0f0';
+    wCtx.fillRect(3*u, 4*u, 10*u, 9*u);
+    // Eyes
+    wCtx.fillStyle = '#222222';
+    wCtx.fillRect(5*u, 6*u, 1.5*u, 1.5*u);
+    wCtx.fillRect(9.5*u, 6*u, 1.5*u, 1.5*u);
+    // Nose
+    wCtx.fillStyle = '#ffaacc';
+    wCtx.fillRect(7.5*u, 8*u, u, u);
+
+    // Feet
+    wCtx.fillStyle = '#dddddd';
+    if (winFrame % 2 === 0) {
+      wCtx.fillRect(4*u, 13*u, 3*u, 2*u);
+      wCtx.fillRect(9*u, 12*u, 3*u, 2*u);
+    } else {
+      wCtx.fillRect(4*u, 12*u, 3*u, 2*u);
+      wCtx.fillRect(9*u, 13*u, 3*u, 2*u);
+    }
+
+    // Shoes overlay
+    if (hasShoes) {
+      wCtx.fillStyle = '#8B4513';
+      if (winFrame % 2 === 0) {
+        wCtx.fillRect(4*u, 14*u, 3*u, 1.5*u);
+        wCtx.fillRect(9*u, 13*u, 3*u, 1.5*u);
+      } else {
+        wCtx.fillRect(4*u, 13*u, 3*u, 1.5*u);
+        wCtx.fillRect(9*u, 14*u, 3*u, 1.5*u);
+      }
+      wCtx.fillStyle = '#f0c040';
+      wCtx.fillRect(4*u, winFrame % 2 === 0 ? 14*u : 13*u, 3*u, 0.5*u);
+      wCtx.fillRect(9*u, winFrame % 2 === 0 ? 13*u : 14*u, 3*u, 0.5*u);
+    }
+
+    // Sword (with sparkles)
+    if (hasSword) {
+      const t = Date.now() / 1000;
+      const sparkPts = [[14.5*u, 0], [13.9*u, 3.5*u], [15.1*u, 6*u]];
+      for (let si = 0; si < sparkPts.length; si++) {
+        wCtx.globalAlpha = Math.abs(Math.sin(t * 5 + si * 2.1)) * 0.9;
+        wCtx.fillStyle = '#ffffff';
+        const ss = u * 0.85;
+        wCtx.fillRect(sparkPts[si][0] - ss/2, sparkPts[si][1] - ss/2, ss, ss);
+      }
+      wCtx.globalAlpha = 1;
+      wCtx.fillStyle = '#f0c040';
+      wCtx.fillRect(13.5*u, -2*u, 2*u, 10*u);
+      wCtx.fillRect(10.5*u, 7.5*u, 7*u, 1.5*u);
+      wCtx.fillStyle = '#8B4513';
+      wCtx.fillRect(13.5*u, 9*u, 2*u, 3.5*u);
+      wCtx.fillStyle = '#f0c040';
+      wCtx.fillRect(13*u, 12.5*u, 3*u, 2*u);
+      wCtx.beginPath();
+      wCtx.moveTo(13.5*u, -2*u);
+      wCtx.lineTo(15.5*u, -2*u);
+      wCtx.lineTo(14.5*u, -5.5*u);
+      wCtx.closePath();
+      wCtx.fill();
+    }
+
+    wCtx.restore();
+
+    // Lantern icon top-left if collected
+    if (hasLantern) {
+      wCtx.save();
+      wCtx.shadowColor = '#f0c040';
+      wCtx.shadowBlur = 4;
+      wCtx.fillStyle = '#f0c040';
+      const lu = 2, lx = 4, ly = 5;
+      wCtx.fillRect(lx + 7*lu, ly + 1*lu, 2*lu, 3*lu);
+      wCtx.fillRect(lx + 5*lu, ly + 4*lu, 6*lu, 8*lu);
+      wCtx.fillRect(lx + 4*lu, ly + 5*lu, 8*lu, 6*lu);
+      wCtx.fillStyle = '#ffffff';
+      wCtx.globalAlpha = 0.6;
+      wCtx.fillRect(lx + 6*lu, ly + 5*lu, 4*lu, 5*lu);
+      wCtx.globalAlpha = 1;
+      wCtx.shadowBlur = 0;
+      wCtx.restore();
+    }
+
+    winFrame = (winFrame + 1) % 4;
+  }
+
+  drawWinFrame();
+  return setInterval(drawWinFrame, 200);
+}
+
 function triggerWin() {
   state.phase = 'win';
   stopBGM();
   playSFX('win');
   document.getElementById('win-overlay').classList.add('visible');
+  if (winHeroInterval) clearInterval(winHeroInterval);
+  winHeroInterval = animateWinHero();
 }
 
 function triggerLose() {
@@ -1947,12 +2070,12 @@ function gameLoop(ts) {
 
 const startBunnyCanvas = document.getElementById('start-bunny-canvas');
 const sbCtx = startBunnyCanvas.getContext('2d');
-startBunnyCanvas.width = 100;
+startBunnyCanvas.width = 200;
 startBunnyCanvas.height = 110;
 let startFrame = 0;
 
 function animateStartBunny() {
-  sbCtx.clearRect(0, 0, 100, 110);
+  sbCtx.clearRect(0, 0, 200, 110);
   sbCtx.save();
   // Offset down to leave room for sword tip above
   sbCtx.translate(8, 28);
@@ -2029,6 +2152,33 @@ function animateStartBunny() {
   sbCtx.fill();
 
   sbCtx.restore();
+
+  // Animated Minotaur on the right side
+  sbCtx.save();
+  sbCtx.translate(110, 28);
+  const mbob = startFrame % 2 === 0 ? 0 : 1;
+  sbCtx.fillStyle = '#4a2800';
+  sbCtx.fillRect(3*u, (6+mbob)*u, 10*u, 8*u);
+  sbCtx.fillStyle = '#6b3a00';
+  sbCtx.fillRect(4*u, (2+mbob)*u, 8*u, 6*u);
+  sbCtx.fillStyle = '#eeeeee';
+  sbCtx.fillRect(3*u, mbob*u, u, 3*u);
+  sbCtx.fillRect(2*u, mbob*u, u, u);
+  sbCtx.fillRect(12*u, mbob*u, u, 3*u);
+  sbCtx.fillRect(13*u, mbob*u, u, u);
+  sbCtx.fillStyle = '#ff0000';
+  sbCtx.fillRect(6*u, (4+mbob)*u, 1.5*u, 1.5*u);
+  sbCtx.fillRect(8.5*u, (4+mbob)*u, 1.5*u, 1.5*u);
+  sbCtx.fillStyle = '#330000';
+  sbCtx.fillRect(6.5*u, (6+mbob)*u, u, u);
+  sbCtx.fillRect(8.5*u, (6+mbob)*u, u, u);
+  sbCtx.restore();
+
+  sbCtx.fillStyle = '#f0c040';
+  sbCtx.font = 'bold 11px monospace';
+  sbCtx.textAlign = 'center';
+  sbCtx.fillText('VS', 100, 72);
+
   startFrame = (startFrame + 1) % 4;
 }
 
@@ -2115,12 +2265,14 @@ document.getElementById('pref-timer').addEventListener('change', e => cfg.timerD
 
 // Win/Lose buttons
 function playAgain() {
+  if (winHeroInterval) { clearInterval(winHeroInterval); winHeroInterval = null; }
   document.getElementById('win-overlay').classList.remove('visible');
   document.getElementById('lose-overlay').classList.remove('visible');
   initState();
   startBGM();
 }
 function returnToStart() {
+  if (winHeroInterval) { clearInterval(winHeroInterval); winHeroInterval = null; }
   stopBGM();
   document.getElementById('win-overlay').classList.remove('visible');
   document.getElementById('lose-overlay').classList.remove('visible');
