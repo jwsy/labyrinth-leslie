@@ -6,28 +6,42 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: gh-pages
   cancel-in-progress: true
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/configure-pages@v5
+      - name: Publish to gh-pages branch
+        run: |
+          set -e
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          # Copy site files before switching branches
+          cp index.html   /tmp/index.html
+          cp manifest.json /tmp/manifest.json
+          cp sw.js         /tmp/sw.js
+          [ -f bgm.mp3 ] && cp bgm.mp3 /tmp/bgm.mp3 || true
+
+          # Create a clean orphan branch with only site files
+          git checkout --orphan _deploy
+          git reset --hard
+
+          cp /tmp/index.html   .
+          cp /tmp/manifest.json .
+          cp /tmp/sw.js         .
+          [ -f /tmp/bgm.mp3 ] && cp /tmp/bgm.mp3 . || true
+
+          SHA="${{ github.sha }}"
+          git add index.html manifest.json sw.js
+          [ -f bgm.mp3 ] && git add bgm.mp3 || true
+          git commit -m "Deploy from ${{ github.ref_name }} @ ${SHA:0:7}"
+          git push origin HEAD:refs/heads/gh-pages --force
