@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" shape-rendering="crispEdges">
+  <!-- Background -->
+  <rect width="32" height="32" fill="#0d0d1a"/>
+
+  <!-- Left ear -->
+  <rect x="7" y="9" width="3" height="8" fill="#f0f0f0"/>
+  <rect x="8" y="10" width="1" height="6" fill="#ffaacc"/>
+
+  <!-- Right ear -->
+  <rect x="16" y="9" width="3" height="8" fill="#f0f0f0"/>
+  <rect x="17" y="10" width="1" height="6" fill="#ffaacc"/>
+
+  <!-- Body -->
+  <rect x="5" y="15" width="16" height="14" fill="#f0f0f0"/>
+
+  <!-- Eyes -->
+  <rect x="8" y="18" width="2" height="2" fill="#111111"/>
+  <rect x="15" y="18" width="2" height="2" fill="#111111"/>
+
+  <!-- Nose -->
+  <rect x="11" y="21" width="2" height="2" fill="#ffaacc"/>
+
+  <!-- Feet (frame 0 alternating) -->
+  <rect x="6" y="29" width="5" height="3" fill="#dddddd"/>
+  <rect x="14" y="27" width="5" height="3" fill="#dddddd"/>
+
+  <!-- Sword (rendered on top of bunny, matches game drawBunny order) -->
+  <!-- Pointed tip -->
+  <polygon points="21,6 24,6 22.5,1" fill="#f0c040"/>
+  <!-- Blade -->
+  <rect x="21" y="6" width="3" height="15" fill="#f0c040"/>
+  <!-- Crossguard -->
+  <rect x="16" y="20" width="12" height="2" fill="#f0c040"/>
+  <!-- Handle -->
+  <rect x="21" y="22" width="3" height="6" fill="#8B4513"/>
+  <!-- Pommel -->
+  <rect x="20" y="28" width="5" height="3" fill="#f0c040"/>
+</svg>
