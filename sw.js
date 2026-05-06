@@ -2,6 +2,9 @@ const CACHE_NAME = 'labyrinth-leslie-v1';
 const ASSETS = [
   './index.html',
   './manifest.json',
+  './favicon.svg',
+  './icon-192.png',
+  './icon-512.png',
   './bgm.mp3'
 ];
 
