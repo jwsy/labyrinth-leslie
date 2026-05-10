@@ -223,8 +223,11 @@
       -webkit-appearance: none;
       outline: none;
     }
-    .quiz-btn:active, .quiz-btn:hover { background: #f0c040; color: #0d0d1a; }
-    .quiz-btn:focus { outline: none; background: #2a2a4e; color: #f0f0f0; }
+    .quiz-btn:active { background: #f0c040; color: #0d0d1a; }
+    @media (hover: hover) {
+      .quiz-btn:hover { background: #f0c040; color: #0d0d1a; }
+    }
+    .quiz-btn:focus-visible { outline: 2px solid #f0c040; outline-offset: 2px; }
 
     #quiz-try-again {
       display: none;
@@ -1248,6 +1251,7 @@ function showQuiz(onCorrect, onWrong, options) {
 }
 
 function hideQuiz() {
+  document.activeElement?.blur();
   document.getElementById('quiz-overlay').classList.remove('visible');
   document.getElementById('quiz-item-preview').style.display = 'none';
   document.getElementById('quiz-try-again').style.display = 'none';
