@@ -511,11 +511,6 @@ function generateMaze(seed) {
   }
   carve(1, 1);
 
-  // Ensure exit cell is open
-  grid[ROWS-2][COLS-2] = 0;
-  grid[ROWS-2][COLS-3] = 0;
-  grid[ROWS-3][COLS-2] = 0;
-
   // Add loops: remove ~20% of "bridge" walls so the bunny never gets stuck
   const candidates = [];
   for (let r = 1; r < ROWS-1; r++) {
@@ -559,7 +554,7 @@ function buildLevel(mazeData) {
   }
 
   const maze = mazeData ? mazeData.maze : generateMaze(seed);
-  const occupied = [[1,1], [ROWS-2, COLS-2]];
+  const occupied = [[1,1]];
 
   const swordPos   = mazeData ? mazeData.items.sword   : placeRandom(maze, occupied, rng);
   const shoesPos   = mazeData ? mazeData.items.shoes   : placeRandom(maze, occupied, rng);
@@ -583,7 +578,7 @@ function exportMaze() {
     seed: state.level.seed,
     maze: state.level.maze,
     playerStart: [1, 1],
-    exit: [ROWS-2, COLS-2],
+    exit: [1, 1],
     items: {
       sword: state.level.swordPos,
       shoes: state.level.shoesPos,
@@ -650,7 +645,7 @@ function isVisible(r, c) {
 }
 
 function isExitCell(r, c) {
-  return r === ROWS-2 && c === COLS-2;
+  return r === 1 && c === 1;
 }
 
 // ═══════════════════════════════════════════════
