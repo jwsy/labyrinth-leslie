@@ -1192,6 +1192,7 @@ function showQuizRound() {
     btn.className = 'quiz-btn';
     btn.textContent = val;
     btn.addEventListener('click', () => {
+      choicesEl.querySelectorAll('.quiz-btn').forEach(b => { b.disabled = true; });
       btn.blur();
       if (val === correct) {
         quizState.given++;
